@@ -24,10 +24,7 @@ contract ServiceMarket {
     mapping(uint256 => uint256[]) internal _servicesByAgent;
 
     event ServiceListed(
-        uint256 indexed serviceId,
-        uint256 indexed agentId,
-        bytes32 indexed capabilityHash,
-        uint256 pricePerTask
+        uint256 indexed serviceId, uint256 indexed agentId, bytes32 indexed capabilityHash, uint256 pricePerTask
     );
     event ServiceDelisted(uint256 indexed serviceId);
     event ServiceUpdated(uint256 indexed serviceId, uint256 newPrice, string newMetadataURI);
@@ -46,12 +43,10 @@ contract ServiceMarket {
     /// @param capabilityHash keccak256 of the capability string (e.g., keccak256("smart_contract_audit"))
     /// @param pricePerTask USDC price per task (6 decimals)
     /// @param metadataURI IPFS URI with full service details
-    function listService(
-        uint256 agentId,
-        bytes32 capabilityHash,
-        uint256 pricePerTask,
-        string calldata metadataURI
-    ) external returns (uint256 serviceId) {
+    function listService(uint256 agentId, bytes32 capabilityHash, uint256 pricePerTask, string calldata metadataURI)
+        external
+        returns (uint256 serviceId)
+    {
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
         if (pricePerTask == 0) revert ZeroPrice();
 

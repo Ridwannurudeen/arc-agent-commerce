@@ -52,11 +52,7 @@ contract ServiceEscrow {
     mapping(address => uint256[]) internal _providerAgreements;
 
     event AgreementCreated(
-        uint256 indexed agreementId,
-        address indexed client,
-        address indexed provider,
-        uint256 amount,
-        uint256 deadline
+        uint256 indexed agreementId, address indexed client, address indexed provider, uint256 amount, uint256 deadline
     );
     event AgreementCompleted(uint256 indexed agreementId, uint256 payout, uint256 fee);
     event AgreementDisputed(uint256 indexed agreementId, address disputedBy);
@@ -240,16 +236,7 @@ contract ServiceEscrow {
 
         // Record negative reputation for missing deadline
         bytes32 feedbackHash = keccak256(abi.encodePacked("deadline_missed", agreementId));
-        reputationRegistry.giveFeedback(
-            agr.providerAgentId,
-            -30,
-            0,
-            "deadline_missed",
-            "",
-            "",
-            "",
-            feedbackHash
-        );
+        reputationRegistry.giveFeedback(agr.providerAgentId, -30, 0, "deadline_missed", "", "", "", feedbackHash);
 
         emit AgreementExpired(agreementId);
     }

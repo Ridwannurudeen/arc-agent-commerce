@@ -39,11 +39,7 @@ contract SpendingPolicy {
 
     /// @notice Set spending policy for an agent wallet
     /// @dev Only callable by the wallet owner. Ownership verified by caller.
-    function setPolicy(
-        address agent,
-        uint256 maxPerTx,
-        uint256 maxDaily
-    ) external {
+    function setPolicy(address agent, uint256 maxPerTx, uint256 maxDaily) external {
         // Caller must be the agent itself (setting own limits) or can be set by anyone
         // who proves ownership. For simplicity, policy owner is msg.sender.
         policyOwners[agent] = msg.sender;

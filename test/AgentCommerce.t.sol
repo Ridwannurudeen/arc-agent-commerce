@@ -35,13 +35,8 @@ contract AgentCommerceTest is Test {
         reputation = new MockReputationRegistry();
         policy = new SpendingPolicy(address(identity));
         market = new ServiceMarket(address(identity));
-        escrow = new ServiceEscrow(
-            address(usdc),
-            address(identity),
-            address(reputation),
-            address(policy),
-            address(market)
-        );
+        escrow =
+            new ServiceEscrow(address(usdc), address(identity), address(reputation), address(policy), address(market));
         vm.stopPrank();
 
         // Register agents
@@ -176,9 +171,8 @@ contract AgentCommerceTest is Test {
     function test_confirmCompletion() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 1000e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 1000e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId =
+            escrow.createAgreement(bob, bobAgentId, 0, 1000e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.confirmCompletion(agId);
         vm.stopPrank();
 
@@ -189,7 +183,7 @@ contract AgentCommerceTest is Test {
 
         // Check reputation was recorded
         assertEq(reputation.feedbackCount(), 1);
-        (uint256 agentId, int128 score,,, ) = reputation.feedbacks(0);
+        (uint256 agentId, int128 score,,,) = reputation.feedbacks(0);
         assertEq(agentId, bobAgentId);
         assertEq(score, 100);
     }
@@ -197,9 +191,7 @@ contract AgentCommerceTest is Test {
     function test_confirmCompletion_revertNotClient() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         vm.stopPrank();
 
         vm.prank(bob);
@@ -210,9 +202,7 @@ contract AgentCommerceTest is Test {
     function test_dispute() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.dispute(agId);
         vm.stopPrank();
 
@@ -223,9 +213,7 @@ contract AgentCommerceTest is Test {
     function test_dispute_byProvider() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         vm.stopPrank();
 
         vm.prank(bob);
@@ -238,9 +226,7 @@ contract AgentCommerceTest is Test {
     function test_dispute_revertThirdParty() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         vm.stopPrank();
 
         vm.prank(charlie);
@@ -251,9 +237,7 @@ contract AgentCommerceTest is Test {
     function test_resolveDispute_fullClientRefund() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.dispute(agId);
         vm.stopPrank();
 
@@ -274,9 +258,7 @@ contract AgentCommerceTest is Test {
     function test_resolveDispute_splitPayout() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 100e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 100e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 100e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.dispute(agId);
         vm.stopPrank();
 
@@ -295,9 +277,7 @@ contract AgentCommerceTest is Test {
     function test_resolveDispute_revertNotOwner() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.dispute(agId);
         vm.stopPrank();
 
@@ -309,9 +289,7 @@ contract AgentCommerceTest is Test {
     function test_claimExpired() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         vm.stopPrank();
 
         uint256 aliceBefore = usdc.balanceOf(alice);
@@ -333,9 +311,7 @@ contract AgentCommerceTest is Test {
     function test_claimExpired_revertBeforeDeadline() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
 
         vm.expectRevert(ServiceEscrow.DeadlineNotReached.selector);
         escrow.claimExpired(agId);
@@ -345,9 +321,7 @@ contract AgentCommerceTest is Test {
     function test_doubleComplete_reverts() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.confirmCompletion(agId);
 
         vm.expectRevert();
@@ -532,13 +506,7 @@ contract AgentCommerceTest is Test {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
         uint256 agId = escrow.createAgreement(
-            bob,
-            bobAgentId,
-            0,
-            50e6,
-            block.timestamp + 7 days,
-            keccak256("audit my contract at 0x1234"),
-            serviceId
+            bob, bobAgentId, 0, 50e6, block.timestamp + 7 days, keccak256("audit my contract at 0x1234"), serviceId
         );
         vm.stopPrank();
 

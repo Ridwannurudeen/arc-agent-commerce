@@ -19,13 +19,8 @@ contract DeployScript is Script {
 
         SpendingPolicy policy = new SpendingPolicy(IDENTITY_REGISTRY);
         ServiceMarket market = new ServiceMarket(IDENTITY_REGISTRY);
-        ServiceEscrow escrow = new ServiceEscrow(
-            USDC,
-            IDENTITY_REGISTRY,
-            REPUTATION_REGISTRY,
-            address(policy),
-            address(market)
-        );
+        ServiceEscrow escrow =
+            new ServiceEscrow(USDC, IDENTITY_REGISTRY, REPUTATION_REGISTRY, address(policy), address(market));
 
         vm.stopBroadcast();
 

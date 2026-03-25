@@ -23,13 +23,9 @@ contract MockReputationRegistry {
         string calldata,
         bytes32 feedbackHash
     ) external {
-        feedbacks.push(Feedback({
-            agentId: agentId,
-            score: score,
-            category: category,
-            tag: tag,
-            feedbackHash: feedbackHash
-        }));
+        feedbacks.push(
+            Feedback({agentId: agentId, score: score, category: category, tag: tag, feedbackHash: feedbackHash})
+        );
     }
 
     function feedbackCount() external view returns (uint256) {
