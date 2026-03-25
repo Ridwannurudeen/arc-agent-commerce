@@ -10,10 +10,17 @@ from arc_commerce.constants import (
     USDC_ADDRESS,
     SERVICE_MARKET_ADDRESS,
     SERVICE_ESCROW_ADDRESS,
+    SPENDING_POLICY_ADDRESS,
     IDENTITY_REGISTRY_ADDRESS,
 )
 from arc_commerce.types import Service, Agreement, AgreementStatus
-from arc_commerce.abi import SERVICE_MARKET_ABI, SERVICE_ESCROW_ABI, ERC20_ABI
+from arc_commerce.abi import (
+    SERVICE_MARKET_ABI,
+    SERVICE_ESCROW_ABI,
+    SPENDING_POLICY_ABI,
+    IDENTITY_REGISTRY_ABI,
+    ERC20_ABI,
+)
 
 
 class ArcCommerce:
@@ -45,6 +52,14 @@ class ArcCommerce:
         self.usdc = self.w3.eth.contract(
             address=Web3.to_checksum_address(USDC_ADDRESS),
             abi=ERC20_ABI,
+        )
+        self.policy = self.w3.eth.contract(
+            address=Web3.to_checksum_address(SPENDING_POLICY_ADDRESS),
+            abi=SPENDING_POLICY_ABI,
+        )
+        self.identity = self.w3.eth.contract(
+            address=Web3.to_checksum_address(IDENTITY_REGISTRY_ADDRESS),
+            abi=IDENTITY_REGISTRY_ABI,
         )
 
     # ── Read methods (no wallet needed) ──
@@ -125,6 +140,49 @@ class ArcCommerce:
         """Total protocol fees collected (6 decimals)."""
         return self.escrow.functions.totalFeesCollected().call()
 
+    # ── SpendingPolicy read methods ──
+
+    def get_policy(self, agent: str) -> dict:
+        """Get the spending policy for an agent address.
+
+        Returns dict with maxPerTx, maxDaily, dailySpent, dayStart, exists.
+        """
+        raw = self.policy.functions.policies(
+            Web3.to_checksum_address(agent)
+        ).call()
+        return {
+            "maxPerTx": raw[0],
+            "maxDaily": raw[1],
+            "dailySpent": raw[2],
+            "dayStart": raw[3],
+            "exists": raw[4],
+        }
+
+    def daily_remaining(self, agent: str) -> int:
+        """Get the remaining daily spending allowance (6 decimals)."""
+        return self.policy.functions.dailyRemaining(
+            Web3.to_checksum_address(agent)
+        ).call()
+
+    def would_pass(self, agent: str, amount_usdc: float, counterparty: str) -> bool:
+        """Check if a transaction would pass the spending policy."""
+        amount = int(amount_usdc * 1_000_000)
+        return self.policy.functions.wouldPass(
+            Web3.to_checksum_address(agent),
+            amount,
+            Web3.to_checksum_address(counterparty),
+        ).call()
+
+    # ── IdentityRegistry read methods ──
+
+    def get_agent_owner(self, agent_id: int) -> str:
+        """Get the owner address of an agent by its ERC-8004 token ID."""
+        return self.identity.functions.ownerOf(agent_id).call()
+
+    def get_agent_uri(self, agent_id: int) -> str:
+        """Get the metadata URI of an agent by its ERC-8004 token ID."""
+        return self.identity.functions.tokenURI(agent_id).call()
+
     # ── Write methods (wallet required) ──
 
     def _send_tx(self, tx_func):
@@ -156,9 +214,26 @@ class ArcCommerce:
         receipt = self._send_tx(
             self.market.functions.listService(agent_id, cap_hash, price, metadata_uri)
         )
-        # Parse ServiceListed event for the service ID
         logs = self.market.events.ServiceListed().process_receipt(receipt)
         return logs[0]["args"]["serviceId"] if logs else -1
+
+    def update_service(
+        self,
+        service_id: int,
+        new_price_usdc: float,
+        new_metadata_uri: str,
+    ) -> dict:
+        """Update an existing service's price and metadata."""
+        price = int(new_price_usdc * 1_000_000)
+        return self._send_tx(
+            self.market.functions.updateService(service_id, price, new_metadata_uri)
+        )
+
+    def delist_service(self, service_id: int) -> dict:
+        """Delist (deactivate) a service."""
+        return self._send_tx(
+            self.market.functions.delistService(service_id)
+        )
 
     def create_agreement(
         self,
@@ -216,6 +291,37 @@ class ArcCommerce:
         """Claim refund for an expired agreement."""
         return self._send_tx(
             self.escrow.functions.claimExpired(agreement_id)
+        )
+
+    # ── SpendingPolicy write methods ──
+
+    def set_policy(self, agent: str, max_per_tx_usdc: float, max_daily_usdc: float) -> dict:
+        """Set a spending policy for an agent."""
+        return self._send_tx(
+            self.policy.functions.setPolicy(
+                Web3.to_checksum_address(agent),
+                int(max_per_tx_usdc * 1_000_000),
+                int(max_daily_usdc * 1_000_000),
+            )
+        )
+
+    def set_counterparty_restriction(self, agent: str, restricted: bool) -> dict:
+        """Enable or disable counterparty restrictions for an agent."""
+        return self._send_tx(
+            self.policy.functions.setCounterpartyRestriction(
+                Web3.to_checksum_address(agent),
+                restricted,
+            )
+        )
+
+    def set_allowed_counterparty(self, agent: str, counterparty: str, allowed: bool) -> dict:
+        """Allow or revoke a counterparty for an agent."""
+        return self._send_tx(
+            self.policy.functions.setAllowedCounterparty(
+                Web3.to_checksum_address(agent),
+                Web3.to_checksum_address(counterparty),
+                allowed,
+            )
         )
 
     # ── Convenience ──

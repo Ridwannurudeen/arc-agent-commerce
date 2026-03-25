@@ -5,6 +5,8 @@ _dir = Path(__file__).parent
 
 SERVICE_MARKET_ABI = json.loads((_dir / "ServiceMarket.json").read_text())
 SERVICE_ESCROW_ABI = json.loads((_dir / "ServiceEscrow.json").read_text())
+SPENDING_POLICY_ABI = json.loads((_dir / "spending_policy.json").read_text())
+IDENTITY_REGISTRY_ABI = json.loads((_dir / "identity_registry.json").read_text())
 
 ERC20_ABI = [
     {

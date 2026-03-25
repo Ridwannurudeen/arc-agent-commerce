@@ -9,7 +9,7 @@ Run with: pytest tests/test_write_operations.py -v
 import time
 import pytest
 from arc_commerce import ArcCommerce, AgreementStatus
-from conftest import PROVIDER_AGENT_ID, CLIENT_AGENT_ID, TEST_PRICE_USDC
+from tests.conftest import PROVIDER_AGENT_ID, CLIENT_AGENT_ID, TEST_PRICE_USDC
 
 
 class TestListService:
