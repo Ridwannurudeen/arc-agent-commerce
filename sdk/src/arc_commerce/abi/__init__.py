@@ -1,0 +1,37 @@
+import json
+from pathlib import Path
+
+_dir = Path(__file__).parent
+
+SERVICE_MARKET_ABI = json.loads((_dir / "ServiceMarket.json").read_text())
+SERVICE_ESCROW_ABI = json.loads((_dir / "ServiceEscrow.json").read_text())
+
+ERC20_ABI = [
+    {
+        "type": "function",
+        "name": "approve",
+        "inputs": [
+            {"name": "spender", "type": "address"},
+            {"name": "amount", "type": "uint256"},
+        ],
+        "outputs": [{"type": "bool"}],
+        "stateMutability": "nonpayable",
+    },
+    {
+        "type": "function",
+        "name": "balanceOf",
+        "inputs": [{"name": "account", "type": "address"}],
+        "outputs": [{"type": "uint256"}],
+        "stateMutability": "view",
+    },
+    {
+        "type": "function",
+        "name": "allowance",
+        "inputs": [
+            {"name": "owner", "type": "address"},
+            {"name": "spender", "type": "address"},
+        ],
+        "outputs": [{"type": "uint256"}],
+        "stateMutability": "view",
+    },
+]
