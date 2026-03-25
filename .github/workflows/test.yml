@@ -36,3 +36,28 @@ jobs:
 
       - name: Run Forge tests
         run: forge test -vvv
+
+  sdk-tests:
+    name: SDK tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install SDK
+        run: pip install -e sdk/ && pip install pytest
+
+      - name: Run read-only tests
+        run: pytest sdk/tests/test_read_operations.py -v
+        continue-on-error: true
+
+      - name: Run write tests
+        run: pytest sdk/tests/test_write_operations.py -v
+        continue-on-error: true

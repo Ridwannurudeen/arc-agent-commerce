@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useAccount,
   useConnect,
@@ -15,13 +15,38 @@ import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 
-type Tab = "services" | "agreements" | "list-service" | "create-agreement";
+const CAPABILITY_NAMES: [string, string][] = [
+  ["smart_contract_audit", "Smart Contract Audit"],
+  ["data_analysis", "Data Analysis"],
+  ["code_review", "Code Review"],
+  ["price_monitoring", "Price Monitoring"],
+];
+const KNOWN_CAPABILITIES = Object.fromEntries(
+  CAPABILITY_NAMES.map(([raw, display]) => [keccak256(toHex(raw)), display])
+);
+function capabilityName(hash: string): string {
+  return KNOWN_CAPABILITIES[hash.toLowerCase()] ?? `${hash.slice(0, 10)}...`;
+}
+
+type Tab = "services" | "agreements" | "list-service" | "create-agreement" | "activity";
+
+type Prefill = {
+  provider: string;
+  providerAgentId: string;
+  amount: string;
+};
 
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
   const [tab, setTab] = useState<Tab>("services");
+  const [prefill, setPrefill] = useState<Prefill | null>(null);
+
+  const handleHire = (provider: string, agentId: string, price: string) => {
+    setPrefill({ provider, providerAgentId: agentId, amount: price });
+    setTab("create-agreement");
+  };
 
   return (
     <>
@@ -63,6 +88,7 @@ export default function Home() {
               ["agreements", "My Agreements"],
               ["list-service", "List Service"],
               ["create-agreement", "Create Agreement"],
+              ["activity", "Activity Feed"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -75,10 +101,11 @@ export default function Home() {
           ))}
         </div>
 
-        {tab === "services" && <BrowseServices />}
+        {tab === "services" && <BrowseServices onHire={handleHire} />}
         {tab === "agreements" && <MyAgreements />}
         {tab === "list-service" && <ListService />}
-        {tab === "create-agreement" && <CreateAgreement />}
+        {tab === "create-agreement" && <CreateAgreement prefill={prefill} />}
+        {tab === "activity" && <ActivityFeed />}
       </div>
     </>
   );
@@ -132,7 +159,7 @@ function Stats() {
   );
 }
 
-function BrowseServices() {
+function BrowseServices({ onHire }: { onHire: (provider: string, agentId: string, price: string) => void }) {
   const { data: nextId } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
     abi: ServiceMarketABI,
@@ -149,13 +176,13 @@ function BrowseServices() {
   return (
     <div className="service-list">
       {Array.from({ length: count }, (_, i) => (
-        <ServiceCard key={i} serviceId={i} />
+        <ServiceCard key={i} serviceId={i} onHire={onHire} />
       ))}
     </div>
   );
 }
 
-function ServiceCard({ serviceId }: { serviceId: number }) {
+function ServiceCard({ serviceId, onHire }: { serviceId: number; onHire: (provider: string, agentId: string, price: string) => void }) {
   const { data } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
     abi: ServiceMarketABI,
@@ -176,12 +203,14 @@ function ServiceCard({ serviceId }: { serviceId: number }) {
 
   if (!svc.active) return null;
 
+  const priceStr = formatUnits(svc.pricePerTask, 6);
+
   return (
     <div className="service-item">
       <div className="info">
-        <h4>Service #{serviceId}</h4>
+        <h4>{capabilityName(svc.capabilityHash)}</h4>
         <div className="meta">
-          Agent #{svc.agentId.toString()} &middot;{" "}
+          Service #{serviceId} &middot; Agent #{svc.agentId.toString()} &middot;{" "}
           <span className="addr">
             {svc.provider.slice(0, 6)}...{svc.provider.slice(-4)}
           </span>
@@ -190,14 +219,24 @@ function ServiceCard({ serviceId }: { serviceId: number }) {
           {svc.metadataURI}
         </div>
       </div>
-      <div className="price">{formatUnits(svc.pricePerTask, 6)} USDC</div>
+      <div className="flex-row">
+        <div className="price">{priceStr} USDC</div>
+        <button
+          className="btn btn-sm"
+          onClick={() => onHire(svc.provider, svc.agentId.toString(), priceStr)}
+        >
+          Hire
+        </button>
+      </div>
     </div>
   );
 }
 
 function MyAgreements() {
   const { address } = useAccount();
-  const { data: agreementIds } = useReadContract({
+  const [view, setView] = useState<"client" | "provider">("client");
+
+  const { data: clientIds } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
     abi: ServiceEscrowABI,
     functionName: "getClientAgreements",
@@ -205,21 +244,45 @@ function MyAgreements() {
     chainId: arcTestnet.id,
   });
 
-  const ids = (agreementIds as bigint[]) ?? [];
+  const { data: providerIds } = useReadContract({
+    address: CONTRACTS.SERVICE_ESCROW,
+    abi: ServiceEscrowABI,
+    functionName: "getProviderAgreements",
+    args: address ? [address] : undefined,
+    chainId: arcTestnet.id,
+  });
+
+  const cIds = (clientIds as bigint[]) ?? [];
+  const pIds = (providerIds as bigint[]) ?? [];
+  const ids = view === "client" ? cIds : pIds;
 
   if (!address) {
     return <div className="empty">Connect wallet to view your agreements.</div>;
   }
 
-  if (ids.length === 0) {
-    return <div className="empty">No agreements yet.</div>;
-  }
-
   return (
     <div>
-      {ids.map((id) => (
-        <AgreementCard key={id.toString()} agreementId={Number(id)} />
-      ))}
+      <div className="toggle-row">
+        <button
+          className={`toggle-btn ${view === "client" ? "active" : ""}`}
+          onClick={() => setView("client")}
+        >
+          As Client ({cIds.length})
+        </button>
+        <button
+          className={`toggle-btn ${view === "provider" ? "active" : ""}`}
+          onClick={() => setView("provider")}
+        >
+          As Provider ({pIds.length})
+        </button>
+      </div>
+      {ids.length === 0 ? (
+        <div className="empty">No agreements as {view}.</div>
+      ) : (
+        ids.map((id) => (
+          <AgreementCard key={id.toString()} agreementId={Number(id)} />
+        ))
+      )}
     </div>
   );
 }
@@ -270,6 +333,14 @@ function AgreementCard({ agreementId }: { agreementId: number }) {
         <span className="addr">
           {agr.provider.slice(0, 6)}...{agr.provider.slice(-4)}
         </span>
+      </div>
+      <div className="row">
+        <span className="label">Client Agent</span>
+        <span>#{agr.clientAgentId.toString()}</span>
+      </div>
+      <div className="row">
+        <span className="label">Provider Agent</span>
+        <span>#{agr.providerAgentId.toString()}</span>
       </div>
       <div className="row">
         <span className="label">Deadline</span>
@@ -395,7 +466,7 @@ function ListService() {
   );
 }
 
-function CreateAgreement() {
+function CreateAgreement({ prefill }: { prefill: Prefill | null }) {
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
   const { writeContract: approveWrite, data: approveHash } = useWriteContract();
@@ -403,11 +474,20 @@ function CreateAgreement() {
     hash: approveHash,
   });
 
-  const [provider, setProvider] = useState("");
-  const [providerAgentId, setProviderAgentId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [provider, setProvider] = useState(prefill?.provider ?? "");
+  const [providerAgentId, setProviderAgentId] = useState(prefill?.providerAgentId ?? "");
+  const [amount, setAmount] = useState(prefill?.amount ?? "");
   const [deadlineHours, setDeadlineHours] = useState("24");
   const [taskDesc, setTaskDesc] = useState("");
+
+  // Update fields when prefill changes
+  useEffect(() => {
+    if (prefill) {
+      setProvider(prefill.provider);
+      setProviderAgentId(prefill.providerAgentId);
+      setAmount(prefill.amount);
+    }
+  }, [prefill]);
 
   const handleApprove = () => {
     approveWrite({
@@ -525,6 +605,88 @@ function CreateAgreement() {
           </div>
         )}
       </form>
+    </div>
+  );
+}
+
+function ActivityFeedItem({ agreementId }: { agreementId: number }) {
+  const { data } = useReadContract({
+    address: CONTRACTS.SERVICE_ESCROW,
+    abi: ServiceEscrowABI,
+    functionName: "getAgreement",
+    args: [BigInt(agreementId)],
+    chainId: arcTestnet.id,
+  });
+
+  if (!data) return null;
+  const agr = data as {
+    client: string;
+    provider: string;
+    providerAgentId: bigint;
+    clientAgentId: bigint;
+    amount: bigint;
+    deadline: bigint;
+    taskHash: string;
+    serviceId: bigint;
+    status: number;
+  };
+
+  const statusLabels = ["active", "completed", "disputed", "expired", "resolved"];
+  const statusLabel = statusLabels[agr.status] ?? "unknown";
+
+  return (
+    <div className="agreement-item">
+      <div className="row">
+        <span className="label">Agreement #{agreementId}</span>
+        <span className={`status ${statusLabel}`}>{statusLabel.toUpperCase()}</span>
+      </div>
+      <div className="row">
+        <span className="label">Amount</span>
+        <span>{formatUnits(agr.amount, 6)} USDC</span>
+      </div>
+      <div className="row">
+        <span className="label">Client</span>
+        <span>
+          <span className="addr">{agr.client.slice(0, 6)}...{agr.client.slice(-4)}</span>
+          {" "}(Agent #{agr.clientAgentId.toString()})
+        </span>
+      </div>
+      <div className="row">
+        <span className="label">Provider</span>
+        <span>
+          <span className="addr">{agr.provider.slice(0, 6)}...{agr.provider.slice(-4)}</span>
+          {" "}(Agent #{agr.providerAgentId.toString()})
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ActivityFeed() {
+  const { data: nextId } = useReadContract({
+    address: CONTRACTS.SERVICE_ESCROW,
+    abi: ServiceEscrowABI,
+    functionName: "nextAgreementId",
+    chainId: arcTestnet.id,
+  });
+
+  const count = Number(nextId ?? 0);
+
+  if (count === 0) {
+    return <div className="empty">No protocol activity yet.</div>;
+  }
+
+  // Show newest first
+  const ids = Array.from({ length: count }, (_, i) => count - 1 - i);
+
+  return (
+    <div>
+      <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
+        All protocol agreements (newest first)
+      </div>
+      {ids.map((id) => (
+        <ActivityFeedItem key={id} agreementId={id} />
+      ))}
     </div>
   );
 }

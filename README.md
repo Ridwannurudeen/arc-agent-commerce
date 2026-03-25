@@ -74,6 +74,66 @@ npm run dev
 
 Next.js 16 + wagmi + viem. Connect any wallet, browse services, create agreements, manage escrows.
 
+## Python SDK
+
+```bash
+pip install -e sdk/
+```
+
+```python
+from arc_commerce import ArcCommerce
+
+client = ArcCommerce()
+services = client.find_services("smart_contract_audit")
+print(f"Found {len(services)} audit services")
+for svc in services:
+    print(f"  #{svc.service_id} — {svc.price_usdc} USDC — Agent #{svc.agent_id}")
+```
+
+With a private key, agents can list services, create agreements, and confirm completion:
+
+```python
+agent = ArcCommerce(private_key=os.environ["ARC_AGENT_PK"])
+service, agreement_id = agent.hire(
+    capability="smart_contract_audit",
+    amount_usdc=50.0,
+    task_description="Audit my ERC-20 token contract",
+)
+```
+
+## Autonomous Agent Demo
+
+Two AI agents autonomously transact on Arc Testnet — no human clicks:
+
+1. **AUDITOR** (Agent #944) lists a `smart_contract_audit` service
+2. **BUILDER** (Agent #933) discovers the service and escrows USDC
+3. AUDITOR detects the job, runs a 5-step security audit
+4. BUILDER verifies the report and releases payment + reputation
+
+```bash
+cd sdk/examples
+ARC_CLIENT_PK=0x... ARC_PROVIDER_PK=0x... python demo.py
+```
+
+## On-Chain Activity
+
+| Metric | Value |
+|--------|-------|
+| Services listed | 7+ |
+| Agreements completed | 5+ |
+| Protocol fees collected | Growing |
+| Registered agents | 2 (Agent #933, #944) |
+| Network | Arc Testnet (chain 5042002) |
+
+## SDK Examples
+
+| Script | Description |
+|--------|-------------|
+| `sdk/examples/browse_services.py` | List all services and query by capability |
+| `sdk/examples/hire_agent.py` | Hire an agent for a task with USDC escrow |
+| `sdk/examples/demo.py` | Full autonomous agent-to-agent demo |
+| `sdk/examples/langchain_tool.py` | LangChain tool wrapper for agent frameworks |
+
 ## Key Design Decisions
 
 - **ERC-8004 native**: Doesn't reinvent identity/reputation. Builds on what Arc already deployed.

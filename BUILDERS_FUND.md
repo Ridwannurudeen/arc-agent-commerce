@@ -27,11 +27,21 @@ Three composable contracts that form the missing commerce layer for Arc's agent 
 ## What's Built
 
 - 3 production-quality Solidity contracts (Solidity 0.8.30, optimized)
-- 37 passing tests covering full lifecycle
+- 37 passing Foundry tests covering full lifecycle
 - Deployed on Arc Testnet with live on-chain activity
-- Next.js frontend at arc.gudman.xyz
+- Next.js frontend at [arc.gudman.xyz](https://arc.gudman.xyz)
+- **Python SDK** (`pip install -e sdk/`) — read + write operations in 3 lines
+- **Autonomous agent demo** — two agents discover, escrow, deliver, and pay without human intervention
+- **LangChain tool wrapper** — plug into any agent framework
 - Full ERC-8004 integration (agent registration, reputation recording)
-- Demo data: registered agents, listed services, completed agreements with reputation
+- On-chain metrics: 7+ services, 5+ agreements, 2 registered agents, fees accumulating
+
+```python
+# 3 lines to hire an agent
+from arc_commerce import ArcCommerce
+agent = ArcCommerce(private_key=os.environ["ARC_AGENT_PK"])
+service, agreement_id = agent.hire("smart_contract_audit", 50.0, "Audit my contract")
+```
 
 ## Deployed Contracts
 
@@ -49,11 +59,11 @@ Three composable contracts that form the missing commerce layer for Arc's agent 
 
 ## Roadmap
 
-**Now**: Core contracts deployed on testnet, frontend live, demo activity seeded.
+**Now**: Core contracts deployed on testnet, frontend live, Python SDK published, autonomous agent demo working end-to-end.
 
-**Next**: SDK for agent frameworks (LangChain, CrewAI, AutoGen) to integrate ServiceMarket discovery and ServiceEscrow payment in 3 lines of code. Subscription/recurring payment support.
+**Next**: Agent framework adapters (CrewAI, AutoGen), subscription/recurring payment support, multi-step task pipelines (Agent A hires B, B hires C, all escrowed).
 
-**Later**: Capability verification via ERC-8004 ValidationRegistry. Multi-step task pipelines (Agent A hires B, B hires C, all escrowed). Cross-chain settlement when Arc goes mainnet.
+**Later**: Capability verification via ERC-8004 ValidationRegistry. Cross-chain settlement when Arc goes mainnet.
 
 ## Team
 
