@@ -2,21 +2,24 @@
 pragma solidity ^0.8.30;
 
 import {IERC8004Identity} from "./interfaces/IERC8004Identity.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
 /// @title ServiceMarket
 /// @notice Service listing and discovery for ERC-8004 registered AI agents on Arc
-/// @dev Agents list services with capabilities and pricing. Requires ERC-8004 registration.
-contract ServiceMarket {
+contract ServiceMarket is Initializable, UUPSUpgradeable, PausableUpgradeable, Ownable2StepUpgradeable {
     struct Service {
         uint256 agentId;
         address provider;
         bytes32 capabilityHash;
-        uint256 pricePerTask; // USDC amount (6 decimals)
-        string metadataURI; // IPFS link to full service description
+        uint256 pricePerTask;
+        string metadataURI;
         bool active;
     }
 
-    IERC8004Identity public immutable identityRegistry;
+    IERC8004Identity public identityRegistry;
 
     uint256 public nextServiceId;
     mapping(uint256 => Service) public services;
@@ -34,17 +37,31 @@ contract ServiceMarket {
     error ServiceNotActive();
     error ZeroPrice();
 
-    constructor(address _identityRegistry) {
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(address _identityRegistry, address _owner) external initializer {
+        __Pausable_init();
+        __Ownable_init(_owner);
+        __Ownable2Step_init();
         identityRegistry = IERC8004Identity(_identityRegistry);
     }
 
-    /// @notice List a new service for a registered agent
-    /// @param agentId The ERC-8004 token ID of the agent
-    /// @param capabilityHash keccak256 of the capability string (e.g., keccak256("smart_contract_audit"))
-    /// @param pricePerTask USDC price per task (6 decimals)
-    /// @param metadataURI IPFS URI with full service details
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
     function listService(uint256 agentId, bytes32 capabilityHash, uint256 pricePerTask, string calldata metadataURI)
         external
+        whenNotPaused
         returns (uint256 serviceId)
     {
         if (identityRegistry.ownerOf(agentId) != msg.sender) revert NotAgentOwner();
@@ -66,7 +83,6 @@ contract ServiceMarket {
         emit ServiceListed(serviceId, agentId, capabilityHash, pricePerTask);
     }
 
-    /// @notice Delist a service
     function delistService(uint256 serviceId) external {
         Service storage svc = services[serviceId];
         if (!svc.active) revert ServiceNotActive();
@@ -76,7 +92,6 @@ contract ServiceMarket {
         emit ServiceDelisted(serviceId);
     }
 
-    /// @notice Update service pricing and metadata
     function updateService(uint256 serviceId, uint256 newPrice, string calldata newMetadataURI) external {
         Service storage svc = services[serviceId];
         if (!svc.active) revert ServiceNotActive();
@@ -88,17 +103,14 @@ contract ServiceMarket {
         emit ServiceUpdated(serviceId, newPrice, newMetadataURI);
     }
 
-    /// @notice Get all service IDs for a capability
     function getServicesByCapability(bytes32 capabilityHash) external view returns (uint256[] memory) {
         return _servicesByCapability[capabilityHash];
     }
 
-    /// @notice Get all service IDs for an agent
     function getServicesByAgent(uint256 agentId) external view returns (uint256[] memory) {
         return _servicesByAgent[agentId];
     }
 
-    /// @notice Get full service details
     function getService(uint256 serviceId) external view returns (Service memory) {
         return services[serviceId];
     }
