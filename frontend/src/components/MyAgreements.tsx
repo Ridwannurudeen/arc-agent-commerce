@@ -5,6 +5,7 @@ import { useAccount, useReadContract } from "wagmi";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 import { AgreementCard } from "./AgreementCard";
+import { Skeleton } from "./Skeleton";
 
 type Props = {
   onViewAgent: (agentId: number) => void;
@@ -14,25 +15,28 @@ export function MyAgreements({ onViewAgent }: Props) {
   const { address } = useAccount();
   const [view, setView] = useState<"client" | "provider">("client");
 
-  const { data: clientIds } = useReadContract({
+  const { data: clientIds, isLoading: isLoadingClient } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
     abi: ServiceEscrowABI,
     functionName: "getClientAgreements",
     args: address ? [address] : undefined,
     chainId: arcTestnet.id,
+    query: { enabled: !!address },
   });
 
-  const { data: providerIds } = useReadContract({
+  const { data: providerIds, isLoading: isLoadingProvider } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
     abi: ServiceEscrowABI,
     functionName: "getProviderAgreements",
     args: address ? [address] : undefined,
     chainId: arcTestnet.id,
+    query: { enabled: !!address },
   });
 
   const cIds = (clientIds as bigint[]) ?? [];
   const pIds = (providerIds as bigint[]) ?? [];
   const ids = view === "client" ? cIds : pIds;
+  const isLoading = view === "client" ? isLoadingClient : isLoadingProvider;
 
   if (!address) {
     return <div className="empty">Connect wallet to view your agreements.</div>;
@@ -54,8 +58,10 @@ export function MyAgreements({ onViewAgent }: Props) {
           As Provider ({pIds.length})
         </button>
       </div>
-      {ids.length === 0 ? (
-        <div className="empty">No agreements as {view}.</div>
+      {isLoading ? (
+        <Skeleton lines={4} />
+      ) : ids.length === 0 ? (
+        <div className="empty">No agreements found as {view}.</div>
       ) : (
         ids.map((id) => (
           <AgreementCard
