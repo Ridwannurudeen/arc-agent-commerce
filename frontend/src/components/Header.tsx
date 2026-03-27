@@ -4,6 +4,7 @@ import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { arcTestnet } from "@/config";
+import { useTheme } from "@/context/ThemeContext";
 
 export function Header() {
   const { address, isConnected, chain } = useAccount();
@@ -11,6 +12,7 @@ export function Header() {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const usdcBalance = useUsdcBalance();
+  const { theme, toggleTheme } = useTheme();
 
   const isWrongChain = isConnected && chain?.id !== arcTestnet.id;
 
@@ -20,6 +22,14 @@ export function Header() {
         Agent Commerce <span>Protocol</span>
       </h1>
       <div className="flex-row">
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={toggleTheme}
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          style={{ minWidth: "2rem", padding: "0.35rem 0.5rem" }}
+        >
+          {theme === "dark" ? "Light" : "Dark"}
+        </button>
         <span className="addr" style={{ fontSize: "0.7rem" }}>
           Arc Testnet
         </span>
