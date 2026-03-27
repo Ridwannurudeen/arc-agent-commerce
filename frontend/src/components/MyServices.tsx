@@ -1,19 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import { capabilityName } from "@/lib/constants";
+import { useToast } from "@/context/ToastContext";
+import { parseContractError } from "@/lib/errors";
 import type { ServiceData } from "@/lib/types";
 
 function MyServiceCard({ serviceId }: { serviceId: number }) {
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
   const [editing, setEditing] = useState(false);
   const [newPrice, setNewPrice] = useState("");
   const [newMetadata, setNewMetadata] = useState("");
+
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast(`Service #${serviceId} updated`, "success", hash);
+    }
+  }, [isSuccess, hash, addToast, serviceId]);
 
   const { data } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
@@ -58,13 +67,16 @@ function MyServiceCard({ serviceId }: { serviceId: number }) {
             style={{ borderColor: "var(--red)", color: "var(--red)" }}
             disabled={isLoading}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SERVICE_MARKET,
-                abi: ServiceMarketABI,
-                functionName: "delistService",
-                args: [BigInt(serviceId)],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SERVICE_MARKET,
+                  abi: ServiceMarketABI,
+                  functionName: "delistService",
+                  args: [BigInt(serviceId)],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             {isLoading ? "Delisting..." : "Delist"}
@@ -95,13 +107,16 @@ function MyServiceCard({ serviceId }: { serviceId: number }) {
               className="btn btn-sm"
               disabled={isLoading}
               onClick={() => {
-                writeContract({
-                  address: CONTRACTS.SERVICE_MARKET,
-                  abi: ServiceMarketABI,
-                  functionName: "updateService",
-                  args: [BigInt(serviceId), parseUnits(newPrice, 6), newMetadata],
-                  chainId: arcTestnet.id,
-                });
+                writeContract(
+                  {
+                    address: CONTRACTS.SERVICE_MARKET,
+                    abi: ServiceMarketABI,
+                    functionName: "updateService",
+                    args: [BigInt(serviceId), parseUnits(newPrice, 6), newMetadata],
+                    chainId: arcTestnet.id,
+                  },
+                  { onError: (err) => addToast(parseContractError(err), "error") }
+                );
                 setEditing(false);
               }}
             >

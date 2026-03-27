@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 import { STATUS_LABELS } from "@/lib/constants";
+import { useToast } from "@/context/ToastContext";
+import { parseContractError } from "@/lib/errors";
 import type { AgreementData } from "@/lib/types";
 
 function DisputeQueueItem({ agreementId }: { agreementId: number }) {
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
-  const { isLoading } = useWaitForTransactionReceipt({ hash });
+  const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
   const [clientPct, setClientPct] = useState(50);
+
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast(`Dispute #${agreementId} resolved`, "success", hash);
+    }
+  }, [isSuccess, hash, addToast, agreementId]);
 
   const { data } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
@@ -55,13 +64,16 @@ function DisputeQueueItem({ agreementId }: { agreementId: number }) {
           className="btn btn-sm"
           disabled={isLoading}
           onClick={() =>
-            writeContract({
-              address: CONTRACTS.SERVICE_ESCROW,
-              abi: ServiceEscrowABI,
-              functionName: "resolveDispute",
-              args: [BigInt(agreementId), BigInt(clientPct)],
-              chainId: arcTestnet.id,
-            })
+            writeContract(
+              {
+                address: CONTRACTS.SERVICE_ESCROW,
+                abi: ServiceEscrowABI,
+                functionName: "resolveDispute",
+                args: [BigInt(agreementId), BigInt(clientPct)],
+                chainId: arcTestnet.id,
+              },
+              { onError: (err) => addToast(parseContractError(err), "error") }
+            )
           }
         >
           {isLoading ? "Resolving..." : "Resolve"}
@@ -72,8 +84,15 @@ function DisputeQueueItem({ agreementId }: { agreementId: number }) {
 }
 
 export function AdminPanel() {
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
-  const { isLoading } = useWaitForTransactionReceipt({ hash });
+  const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast("Admin action confirmed", "success", hash);
+    }
+  }, [isSuccess, hash, addToast]);
 
   const [newFee, setNewFee] = useState("");
   const [newRecipient, setNewRecipient] = useState("");
@@ -161,13 +180,16 @@ export function AdminPanel() {
           className="btn btn-sm"
           disabled={isLoading || !newFee}
           onClick={() =>
-            writeContract({
-              address: CONTRACTS.SERVICE_ESCROW,
-              abi: ServiceEscrowABI,
-              functionName: "setFee",
-              args: [BigInt(newFee)],
-              chainId: arcTestnet.id,
-            })
+            writeContract(
+              {
+                address: CONTRACTS.SERVICE_ESCROW,
+                abi: ServiceEscrowABI,
+                functionName: "setFee",
+                args: [BigInt(newFee)],
+                chainId: arcTestnet.id,
+              },
+              { onError: (err) => addToast(parseContractError(err), "error") }
+            )
           }
         >
           {isLoading ? "Setting..." : "Set Fee"}
@@ -190,13 +212,16 @@ export function AdminPanel() {
           className="btn btn-sm"
           disabled={isLoading || !newRecipient}
           onClick={() =>
-            writeContract({
-              address: CONTRACTS.SERVICE_ESCROW,
-              abi: ServiceEscrowABI,
-              functionName: "setFeeRecipient",
-              args: [newRecipient as `0x${string}`],
-              chainId: arcTestnet.id,
-            })
+            writeContract(
+              {
+                address: CONTRACTS.SERVICE_ESCROW,
+                abi: ServiceEscrowABI,
+                functionName: "setFeeRecipient",
+                args: [newRecipient as `0x${string}`],
+                chainId: arcTestnet.id,
+              },
+              { onError: (err) => addToast(parseContractError(err), "error") }
+            )
           }
         >
           {isLoading ? "Setting..." : "Set Recipient"}
@@ -232,13 +257,16 @@ export function AdminPanel() {
           style={{ background: "var(--red)" }}
           disabled={isLoading || !newOwner || confirmTransfer !== "TRANSFER"}
           onClick={() =>
-            writeContract({
-              address: CONTRACTS.SERVICE_ESCROW,
-              abi: ServiceEscrowABI,
-              functionName: "transferOwnership",
-              args: [newOwner as `0x${string}`],
-              chainId: arcTestnet.id,
-            })
+            writeContract(
+              {
+                address: CONTRACTS.SERVICE_ESCROW,
+                abi: ServiceEscrowABI,
+                functionName: "transferOwnership",
+                args: [newOwner as `0x${string}`],
+                chainId: arcTestnet.id,
+              },
+              { onError: (err) => addToast(parseContractError(err), "error") }
+            )
           }
         >
           {isLoading ? "Transferring..." : "Transfer Ownership"}

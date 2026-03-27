@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, keccak256, toHex } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
+import { useToast } from "@/context/ToastContext";
+import { parseContractError } from "@/lib/errors";
 
 export function ListService() {
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -15,20 +18,31 @@ export function ListService() {
   const [price, setPrice] = useState("");
   const [metadataURI, setMetadataURI] = useState("");
 
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast("Service listed successfully", "success", hash);
+    }
+  }, [isSuccess, hash, addToast]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    writeContract({
-      address: CONTRACTS.SERVICE_MARKET,
-      abi: ServiceMarketABI,
-      functionName: "listService",
-      args: [
-        BigInt(agentId),
-        keccak256(toHex(capability)),
-        parseUnits(price, 6),
-        metadataURI,
-      ],
-      chainId: arcTestnet.id,
-    });
+    writeContract(
+      {
+        address: CONTRACTS.SERVICE_MARKET,
+        abi: ServiceMarketABI,
+        functionName: "listService",
+        args: [
+          BigInt(agentId),
+          keccak256(toHex(capability)),
+          parseUnits(price, 6),
+          metadataURI,
+        ],
+        chainId: arcTestnet.id,
+      },
+      {
+        onError: (err) => addToast(parseContractError(err), "error"),
+      }
+    );
   };
 
   return (

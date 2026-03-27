@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import SpendingPolicyABI from "@/abi/SpendingPolicy.json";
+import { useToast } from "@/context/ToastContext";
+import { parseContractError } from "@/lib/errors";
 import type { PolicyData } from "@/lib/types";
 
 export function SpendingPolicyTab() {
   const { address } = useAccount();
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
-  const { isLoading } = useWaitForTransactionReceipt({ hash });
+  const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast("Spending policy updated", "success", hash);
+    }
+  }, [isSuccess, hash, addToast]);
 
   // Set Policy form
   const [agentAddr, setAgentAddr] = useState("");
@@ -170,17 +179,20 @@ export function SpendingPolicyTab() {
           className="btn"
           disabled={isLoading || !agentAddr || !maxPerTx || !maxDaily}
           onClick={() =>
-            writeContract({
-              address: CONTRACTS.SPENDING_POLICY,
-              abi: SpendingPolicyABI,
-              functionName: "setPolicy",
-              args: [
-                agentAddr as `0x${string}`,
-                parseUnits(maxPerTx, 6),
-                parseUnits(maxDaily, 6),
-              ],
-              chainId: arcTestnet.id,
-            })
+            writeContract(
+              {
+                address: CONTRACTS.SPENDING_POLICY,
+                abi: SpendingPolicyABI,
+                functionName: "setPolicy",
+                args: [
+                  agentAddr as `0x${string}`,
+                  parseUnits(maxPerTx, 6),
+                  parseUnits(maxDaily, 6),
+                ],
+                chainId: arcTestnet.id,
+              },
+              { onError: (err) => addToast(parseContractError(err), "error") }
+            )
           }
         >
           {isLoading ? "Setting..." : "Set Policy"}
@@ -204,13 +216,16 @@ export function SpendingPolicyTab() {
             className="btn btn-sm"
             disabled={isLoading || !cpAgentAddr}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SPENDING_POLICY,
-                abi: SpendingPolicyABI,
-                functionName: "setCounterpartyRestriction",
-                args: [cpAgentAddr as `0x${string}`, true],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SPENDING_POLICY,
+                  abi: SpendingPolicyABI,
+                  functionName: "setCounterpartyRestriction",
+                  args: [cpAgentAddr as `0x${string}`, true],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             Enable Restriction
@@ -219,13 +234,16 @@ export function SpendingPolicyTab() {
             className="btn btn-outline btn-sm"
             disabled={isLoading || !cpAgentAddr}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SPENDING_POLICY,
-                abi: SpendingPolicyABI,
-                functionName: "setCounterpartyRestriction",
-                args: [cpAgentAddr as `0x${string}`, false],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SPENDING_POLICY,
+                  abi: SpendingPolicyABI,
+                  functionName: "setCounterpartyRestriction",
+                  args: [cpAgentAddr as `0x${string}`, false],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             Disable Restriction
@@ -250,13 +268,16 @@ export function SpendingPolicyTab() {
             className="btn btn-sm"
             disabled={isLoading || !cpAgentAddr || !counterparty}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SPENDING_POLICY,
-                abi: SpendingPolicyABI,
-                functionName: "setAllowedCounterparty",
-                args: [cpAgentAddr as `0x${string}`, counterparty as `0x${string}`, true],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SPENDING_POLICY,
+                  abi: SpendingPolicyABI,
+                  functionName: "setAllowedCounterparty",
+                  args: [cpAgentAddr as `0x${string}`, counterparty as `0x${string}`, true],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             Allow
@@ -265,13 +286,16 @@ export function SpendingPolicyTab() {
             className="btn btn-outline btn-sm"
             disabled={isLoading || !cpAgentAddr || !counterparty}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SPENDING_POLICY,
-                abi: SpendingPolicyABI,
-                functionName: "setAllowedCounterparty",
-                args: [cpAgentAddr as `0x${string}`, counterparty as `0x${string}`, false],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SPENDING_POLICY,
+                  abi: SpendingPolicyABI,
+                  functionName: "setAllowedCounterparty",
+                  args: [cpAgentAddr as `0x${string}`, counterparty as `0x${string}`, false],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             Revoke

@@ -7,6 +7,8 @@ import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 import { STATUS_LABELS } from "@/lib/constants";
 import { useIsOwner } from "@/hooks/useIsOwner";
+import { useToast } from "@/context/ToastContext";
+import { parseContractError } from "@/lib/errors";
 import type { AgreementData } from "@/lib/types";
 
 type Props = {
@@ -43,9 +45,16 @@ function Countdown({ deadline }: { deadline: bigint }) {
 export function AgreementCard({ agreementId, onViewAgent }: Props) {
   const { address } = useAccount();
   const isOwner = useIsOwner();
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
-  const { isLoading } = useWaitForTransactionReceipt({ hash });
+  const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
   const [clientPct, setClientPct] = useState(50);
+
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast(`Agreement #${agreementId} action confirmed`, "success", hash);
+    }
+  }, [isSuccess, hash, addToast, agreementId]);
 
   const { data } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
@@ -113,13 +122,16 @@ export function AgreementCard({ agreementId, onViewAgent }: Props) {
             className="btn btn-sm"
             disabled={isLoading}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SERVICE_ESCROW,
-                abi: ServiceEscrowABI,
-                functionName: "confirmCompletion",
-                args: [BigInt(agreementId)],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SERVICE_ESCROW,
+                  abi: ServiceEscrowABI,
+                  functionName: "confirmCompletion",
+                  args: [BigInt(agreementId)],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             {isLoading ? "Confirming..." : "Confirm Complete"}
@@ -128,13 +140,16 @@ export function AgreementCard({ agreementId, onViewAgent }: Props) {
             className="btn btn-outline btn-sm"
             disabled={isLoading}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SERVICE_ESCROW,
-                abi: ServiceEscrowABI,
-                functionName: "dispute",
-                args: [BigInt(agreementId)],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SERVICE_ESCROW,
+                  abi: ServiceEscrowABI,
+                  functionName: "dispute",
+                  args: [BigInt(agreementId)],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             Dispute
@@ -149,13 +164,16 @@ export function AgreementCard({ agreementId, onViewAgent }: Props) {
             style={{ background: "var(--red)" }}
             disabled={isLoading}
             onClick={() =>
-              writeContract({
-                address: CONTRACTS.SERVICE_ESCROW,
-                abi: ServiceEscrowABI,
-                functionName: "claimExpired",
-                args: [BigInt(agreementId)],
-                chainId: arcTestnet.id,
-              })
+              writeContract(
+                {
+                  address: CONTRACTS.SERVICE_ESCROW,
+                  abi: ServiceEscrowABI,
+                  functionName: "claimExpired",
+                  args: [BigInt(agreementId)],
+                  chainId: arcTestnet.id,
+                },
+                { onError: (err) => addToast(parseContractError(err), "error") }
+              )
             }
           >
             {isLoading ? "Claiming..." : "Claim Expired Refund"}
@@ -183,13 +201,16 @@ export function AgreementCard({ agreementId, onViewAgent }: Props) {
               className="btn btn-sm"
               disabled={isLoading}
               onClick={() =>
-                writeContract({
-                  address: CONTRACTS.SERVICE_ESCROW,
-                  abi: ServiceEscrowABI,
-                  functionName: "resolveDispute",
-                  args: [BigInt(agreementId), BigInt(clientPct)],
-                  chainId: arcTestnet.id,
-                })
+                writeContract(
+                  {
+                    address: CONTRACTS.SERVICE_ESCROW,
+                    abi: ServiceEscrowABI,
+                    functionName: "resolveDispute",
+                    args: [BigInt(agreementId), BigInt(clientPct)],
+                    chainId: arcTestnet.id,
+                  },
+                  { onError: (err) => addToast(parseContractError(err), "error") }
+                )
               }
             >
               {isLoading ? "Resolving..." : "Resolve"}

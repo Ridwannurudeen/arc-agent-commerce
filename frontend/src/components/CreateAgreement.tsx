@@ -8,6 +8,8 @@ import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 import SpendingPolicyABI from "@/abi/SpendingPolicy.json";
 import USDCABI from "@/abi/USDC.json";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
+import { useToast } from "@/context/ToastContext";
+import { parseContractError } from "@/lib/errors";
 import type { Prefill } from "@/lib/types";
 
 type Props = {
@@ -15,10 +17,11 @@ type Props = {
 };
 
 export function CreateAgreement({ prefill }: Props) {
+  const { addToast } = useToast();
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
   const { writeContract: approveWrite, data: approveHash } = useWriteContract();
-  const { isLoading: isApproving } = useWaitForTransactionReceipt({ hash: approveHash });
+  const { isLoading: isApproving, isSuccess: isApproveSuccess } = useWaitForTransactionReceipt({ hash: approveHash });
 
   const [provider, setProvider] = useState(prefill?.provider ?? "");
   const [providerAgentId, setProviderAgentId] = useState(prefill?.providerAgentId ?? "");
@@ -64,14 +67,31 @@ export function CreateAgreement({ prefill }: Props) {
 
   const showPolicyCheck = agentIdNum > 0 && !!agentOwner && hasAmount && !!provider;
 
+  useEffect(() => {
+    if (isApproveSuccess && approveHash) {
+      addToast("USDC approval confirmed", "success", approveHash);
+    }
+  }, [isApproveSuccess, approveHash, addToast]);
+
+  useEffect(() => {
+    if (isSuccess && hash) {
+      addToast("Agreement created successfully", "success", hash);
+    }
+  }, [isSuccess, hash, addToast]);
+
   const handleApprove = () => {
-    approveWrite({
-      address: CONTRACTS.USDC,
-      abi: USDCABI,
-      functionName: "approve",
-      args: [CONTRACTS.SERVICE_ESCROW, parseUnits(amount || "0", 6)],
-      chainId: arcTestnet.id,
-    });
+    approveWrite(
+      {
+        address: CONTRACTS.USDC,
+        abi: USDCABI,
+        functionName: "approve",
+        args: [CONTRACTS.SERVICE_ESCROW, parseUnits(amount || "0", 6)],
+        chainId: arcTestnet.id,
+      },
+      {
+        onError: (err) => addToast(parseContractError(err), "error"),
+      }
+    );
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -79,21 +99,26 @@ export function CreateAgreement({ prefill }: Props) {
     const deadline = BigInt(
       Math.floor(Date.now() / 1000) + Number(deadlineHours) * 3600
     );
-    writeContract({
-      address: CONTRACTS.SERVICE_ESCROW,
-      abi: ServiceEscrowABI,
-      functionName: "createAgreement",
-      args: [
-        provider as `0x${string}`,
-        BigInt(providerAgentId),
-        BigInt(clientAgentId),
-        parseUnits(amount, 6),
-        deadline,
-        keccak256(toHex(taskDesc)),
-        BigInt(0),
-      ],
-      chainId: arcTestnet.id,
-    });
+    writeContract(
+      {
+        address: CONTRACTS.SERVICE_ESCROW,
+        abi: ServiceEscrowABI,
+        functionName: "createAgreement",
+        args: [
+          provider as `0x${string}`,
+          BigInt(providerAgentId),
+          BigInt(clientAgentId),
+          parseUnits(amount, 6),
+          deadline,
+          keccak256(toHex(taskDesc)),
+          BigInt(0),
+        ],
+        chainId: arcTestnet.id,
+      },
+      {
+        onError: (err) => addToast(parseContractError(err), "error"),
+      }
+    );
   };
 
   return (
