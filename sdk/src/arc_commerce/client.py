@@ -14,6 +14,7 @@ from arc_commerce.constants import (
     SERVICE_ESCROW_ADDRESS,
     SPENDING_POLICY_ADDRESS,
     IDENTITY_REGISTRY_ADDRESS,
+    get_network_config,
 )
 from arc_commerce.types import Service, Agreement, AgreementStatus
 from arc_commerce.abi import (
@@ -41,8 +42,12 @@ class ArcCommerce:
         self,
         private_key: str | None = None,
         rpc_url: str = None,
-        service_market: str = SERVICE_MARKET_ADDRESS,
-        service_escrow: str = SERVICE_ESCROW_ADDRESS,
+        network: str = "testnet",
+        service_market: str = None,
+        service_escrow: str = None,
+        escrow_address: str = None,
+        market_address: str = None,
+        policy_address: str = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
         tx_timeout: int = 120,
@@ -56,33 +61,42 @@ class ArcCommerce:
         # Configure logger
         logging.getLogger("arc_commerce").setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-        rpc = rpc_url or ARC_TESTNET_RPC
+        # Resolve network config
+        config = get_network_config(network)
+        rpc = rpc_url or config["rpc"]
         self.w3 = Web3(Web3.HTTPProvider(rpc))
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
-        self.chain_id = ARC_TESTNET_CHAIN_ID
+        self.chain_id = config.get("chain_id", ARC_TESTNET_CHAIN_ID)
 
         self.account = None
         if private_key:
             self.account = self.w3.eth.account.from_key(private_key)
 
+        # Resolve contract addresses (explicit params > network config > hardcoded defaults)
+        market_addr = market_address or service_market or config.get("service_market", SERVICE_MARKET_ADDRESS)
+        escrow_addr = escrow_address or service_escrow or config.get("service_escrow", SERVICE_ESCROW_ADDRESS)
+        policy_addr = policy_address or config.get("spending_policy", SPENDING_POLICY_ADDRESS)
+        usdc_addr = config.get("usdc", USDC_ADDRESS)
+        identity_addr = config.get("identity_registry", IDENTITY_REGISTRY_ADDRESS)
+
         self.market = self.w3.eth.contract(
-            address=Web3.to_checksum_address(service_market),
+            address=Web3.to_checksum_address(market_addr),
             abi=SERVICE_MARKET_ABI,
         )
         self.escrow = self.w3.eth.contract(
-            address=Web3.to_checksum_address(service_escrow),
+            address=Web3.to_checksum_address(escrow_addr),
             abi=SERVICE_ESCROW_ABI,
         )
         self.usdc = self.w3.eth.contract(
-            address=Web3.to_checksum_address(USDC_ADDRESS),
+            address=Web3.to_checksum_address(usdc_addr),
             abi=ERC20_ABI,
         )
         self.policy = self.w3.eth.contract(
-            address=Web3.to_checksum_address(SPENDING_POLICY_ADDRESS),
+            address=Web3.to_checksum_address(policy_addr),
             abi=SPENDING_POLICY_ABI,
         )
         self.identity = self.w3.eth.contract(
-            address=Web3.to_checksum_address(IDENTITY_REGISTRY_ADDRESS),
+            address=Web3.to_checksum_address(identity_addr),
             abi=IDENTITY_REGISTRY_ABI,
         )
 
