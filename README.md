@@ -45,9 +45,9 @@ All three contracts use the **UUPS proxy pattern** (ERC-1822), making them upgra
 
 | Contract | Address |
 |----------|---------|
-| ServiceMarket | `0x5dC727FF8Cb7Ada3AA09365C435637c5E3ACAF2E` |
-| ServiceEscrow | `0x2b44D1e0885D36C21d36E8a1B406012430c4174e` |
-| SpendingPolicy | `0xC8a5658Bef5eE6dBEF67DFA71180f1773E3Df42e` |
+| ServiceMarket | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
+| ServiceEscrow | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
+| SpendingPolicy | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |
 
 **Arc Testnet**: Chain ID 5042002, RPC `https://rpc.testnet.arc.network`, Explorer `https://testnet.arcscan.app`
 
