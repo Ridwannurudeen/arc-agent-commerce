@@ -1,14 +1,18 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
 import { injected } from "wagmi/connectors";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
+import { arcTestnet } from "@/config";
 
 export function Header() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
+  const { switchChain } = useSwitchChain();
   const usdcBalance = useUsdcBalance();
+
+  const isWrongChain = isConnected && chain?.id !== arcTestnet.id;
 
   return (
     <header>
@@ -21,12 +25,24 @@ export function Header() {
         </span>
         {isConnected ? (
           <div className="flex-row">
-            {usdcBalance !== null && (
-              <span className="usdc-balance">{usdcBalance} USDC</span>
+            {isWrongChain ? (
+              <button
+                className="btn btn-sm"
+                style={{ background: "var(--red)" }}
+                onClick={() => switchChain({ chainId: arcTestnet.id })}
+              >
+                Switch to Arc Testnet
+              </button>
+            ) : (
+              <>
+                {usdcBalance !== null && (
+                  <span className="usdc-balance">{usdcBalance} USDC</span>
+                )}
+                <span className="addr">
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                </span>
+              </>
             )}
-            <span className="addr">
-              {address?.slice(0, 6)}...{address?.slice(-4)}
-            </span>
             <button className="btn btn-outline btn-sm" onClick={() => disconnect()}>
               Disconnect
             </button>
