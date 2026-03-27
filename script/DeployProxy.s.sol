@@ -22,12 +22,10 @@ contract DeployProxyScript is Script {
         ServiceEscrow escrowImpl = new ServiceEscrow();
 
         ERC1967Proxy policyProxy = new ERC1967Proxy(
-            address(policyImpl),
-            abi.encodeCall(SpendingPolicy.initialize, (IDENTITY_REGISTRY, deployer))
+            address(policyImpl), abi.encodeCall(SpendingPolicy.initialize, (IDENTITY_REGISTRY, deployer))
         );
         ERC1967Proxy marketProxy = new ERC1967Proxy(
-            address(marketImpl),
-            abi.encodeCall(ServiceMarket.initialize, (IDENTITY_REGISTRY, deployer))
+            address(marketImpl), abi.encodeCall(ServiceMarket.initialize, (IDENTITY_REGISTRY, deployer))
         );
         ERC1967Proxy escrowProxy = new ERC1967Proxy(
             address(escrowImpl),

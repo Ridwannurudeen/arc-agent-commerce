@@ -42,18 +42,23 @@ contract AgentCommerceTest is Test {
 
         // Deploy proxies
         ERC1967Proxy policyProxy = new ERC1967Proxy(
-            address(policyImpl),
-            abi.encodeCall(SpendingPolicy.initialize, (address(identity), deployer))
+            address(policyImpl), abi.encodeCall(SpendingPolicy.initialize, (address(identity), deployer))
         );
         ERC1967Proxy marketProxy = new ERC1967Proxy(
-            address(marketImpl),
-            abi.encodeCall(ServiceMarket.initialize, (address(identity), deployer))
+            address(marketImpl), abi.encodeCall(ServiceMarket.initialize, (address(identity), deployer))
         );
         ERC1967Proxy escrowProxy = new ERC1967Proxy(
             address(escrowImpl),
             abi.encodeCall(
                 ServiceEscrow.initialize,
-                (address(usdc), address(identity), address(reputation), address(policyProxy), address(marketProxy), deployer)
+                (
+                    address(usdc),
+                    address(identity),
+                    address(reputation),
+                    address(policyProxy),
+                    address(marketProxy),
+                    deployer
+                )
             )
         );
 
@@ -158,7 +163,8 @@ contract AgentCommerceTest is Test {
     function test_createAgreement() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("audit task"), 0);
+        uint256 agId =
+            escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("audit task"), 0);
         vm.stopPrank();
 
         ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
@@ -191,7 +197,8 @@ contract AgentCommerceTest is Test {
     function test_confirmCompletion() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 1000e6);
-        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 1000e6, block.timestamp + 1 days, keccak256("task"), 0);
+        uint256 agId =
+            escrow.createAgreement(bob, bobAgentId, 0, 1000e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.confirmCompletion(agId);
         vm.stopPrank();
 
@@ -552,7 +559,8 @@ contract AgentCommerceTest is Test {
 
         vm.startPrank(alice);
         usdc.approve(address(escrow), 200e6);
-        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 200e6, block.timestamp + 1 days, keccak256("big task"), 0);
+        uint256 agId =
+            escrow.createAgreement(bob, bobAgentId, 0, 200e6, block.timestamp + 1 days, keccak256("big task"), 0);
         vm.stopPrank();
 
         assertEq(escrow.getAgreement(agId).amount, 200e6);
@@ -571,7 +579,9 @@ contract AgentCommerceTest is Test {
 
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 7 days, keccak256("audit my contract at 0x1234"), serviceId);
+        uint256 agId = escrow.createAgreement(
+            bob, bobAgentId, 0, 50e6, block.timestamp + 7 days, keccak256("audit my contract at 0x1234"), serviceId
+        );
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(address(escrow)), 50e6);
