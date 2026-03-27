@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, keccak256, toHex } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
@@ -23,6 +23,29 @@ export function ListService() {
       addToast("Service listed successfully", "success", hash);
     }
   }, [isSuccess, hash, addToast]);
+
+  // Validation
+  const validation = useMemo(() => {
+    const errors: Record<string, string> = {};
+    if (price) {
+      const num = Number(price);
+      if (isNaN(num) || num <= 0) {
+        errors.price = "Price must be greater than zero";
+      } else {
+        const parts = price.split(".");
+        if (parts[1] && parts[1].length > 6) {
+          errors.price = "USDC supports max 6 decimal places";
+        }
+      }
+    }
+    if (metadataURI !== undefined && metadataURI.trim() === "" && metadataURI.length > 0) {
+      errors.metadata = "Metadata URI cannot be empty whitespace";
+    }
+    return errors;
+  }, [price, metadataURI]);
+
+  const hasErrors = Object.keys(validation).length > 0;
+  const canSubmit = !!agentId && !!capability && !!price && !!metadataURI && !hasErrors;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +101,9 @@ export function ListService() {
             onChange={(e) => setPrice(e.target.value)}
             required
           />
+          {validation.price && (
+            <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.price}</span>
+          )}
         </div>
         <div className="form-group">
           <label>Metadata URI</label>
@@ -88,8 +114,11 @@ export function ListService() {
             onChange={(e) => setMetadataURI(e.target.value)}
             required
           />
+          {validation.metadata && (
+            <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.metadata}</span>
+          )}
         </div>
-        <button className="btn" type="submit" disabled={isLoading}>
+        <button className="btn" type="submit" disabled={isLoading || !canSubmit}>
           {isLoading ? "Listing..." : "List Service"}
         </button>
         {isSuccess && (

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { parseUnits, keccak256, toHex } from "viem";
+import { parseUnits, keccak256, toHex, isAddress } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 import SpendingPolicyABI from "@/abi/SpendingPolicy.json";
@@ -66,6 +66,55 @@ export function CreateAgreement({ prefill }: Props) {
   });
 
   const showPolicyCheck = agentIdNum > 0 && !!agentOwner && hasAmount && !!provider;
+  const policyFailed = showPolicyCheck && wouldPassResult === false;
+
+  // Validation
+  const validation = useMemo(() => {
+    const errors: Record<string, string> = {};
+
+    // Provider address
+    if (provider && !isAddress(provider)) {
+      errors.provider = "Invalid Ethereum address";
+    }
+
+    // Amount
+    if (amount) {
+      const num = Number(amount);
+      if (isNaN(num) || num <= 0) {
+        errors.amount = "Amount must be greater than zero";
+      } else {
+        const parts = amount.split(".");
+        if (parts[1] && parts[1].length > 6) {
+          errors.amount = "USDC supports max 6 decimal places";
+        }
+      }
+    }
+
+    // Deadline
+    const hrs = Number(deadlineHours);
+    if (deadlineHours) {
+      if (isNaN(hrs) || hrs <= 0) {
+        errors.deadline = "Deadline must be greater than zero";
+      } else if (hrs < 1) {
+        errors.deadline = "Deadline must be at least 1 hour in the future";
+      } else if (hrs < 24) {
+        errors.deadlineWarn = "Short deadline — consider at least 24 hours";
+      }
+    }
+
+    // Policy check
+    if (policyFailed) {
+      errors.policy = "Spending policy limit would be exceeded";
+    }
+
+    return errors;
+  }, [provider, amount, deadlineHours, policyFailed]);
+
+  const hasValidationErrors = Object.keys(validation).some(
+    (k) => k !== "deadlineWarn"
+  );
+  const formComplete = !!provider && !!providerAgentId && !!amount && !!deadlineHours && !!taskDesc;
+  const canSubmit = formComplete && !hasValidationErrors;
 
   useEffect(() => {
     if (isApproveSuccess && approveHash) {
@@ -134,6 +183,9 @@ export function CreateAgreement({ prefill }: Props) {
             onChange={(e) => setProvider(e.target.value)}
             required
           />
+          {validation.provider && (
+            <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.provider}</span>
+          )}
         </div>
         <div className="form-group">
           <label>Provider Agent ID (ERC-8004)</label>
@@ -163,6 +215,9 @@ export function CreateAgreement({ prefill }: Props) {
             onChange={(e) => setAmount(e.target.value)}
             required
           />
+          {validation.amount && (
+            <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.amount}</span>
+          )}
         </div>
         <div className="form-group">
           <label>Deadline (hours from now)</label>
@@ -173,6 +228,12 @@ export function CreateAgreement({ prefill }: Props) {
             onChange={(e) => setDeadlineHours(e.target.value)}
             required
           />
+          {validation.deadline && (
+            <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.deadline}</span>
+          )}
+          {validation.deadlineWarn && !validation.deadline && (
+            <span style={{ color: "var(--yellow)", fontSize: "0.75rem" }}>{validation.deadlineWarn}</span>
+          )}
         </div>
         <div className="form-group">
           <label>Task Description</label>
@@ -198,11 +259,11 @@ export function CreateAgreement({ prefill }: Props) {
             type="button"
             className="btn btn-outline"
             onClick={handleApprove}
-            disabled={isApproving || !amount}
+            disabled={isApproving || !amount || !!validation.amount}
           >
             {isApproving ? "Approving..." : "1. Approve USDC"}
           </button>
-          <button className="btn" type="submit" disabled={isLoading}>
+          <button className="btn" type="submit" disabled={isLoading || !canSubmit}>
             {isLoading ? "Creating..." : "2. Create Agreement"}
           </button>
         </div>
