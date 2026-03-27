@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ServiceMarket} from "../src/ServiceMarket.sol";
 import {ServiceEscrow} from "../src/ServiceEscrow.sol";
 import {SpendingPolicy} from "../src/SpendingPolicy.sol";
@@ -17,9 +18,9 @@ contract AgentCommerceTest is Test {
     ServiceMarket market;
     ServiceEscrow escrow;
 
-    address alice = makeAddr("alice"); // agent owner / client
-    address bob = makeAddr("bob"); // provider agent owner
-    address charlie = makeAddr("charlie"); // random third party
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
+    address charlie = makeAddr("charlie");
     address deployer = makeAddr("deployer");
 
     uint256 aliceAgentId;
@@ -33,21 +34,41 @@ contract AgentCommerceTest is Test {
         usdc = new MockUSDC();
         identity = new MockIdentityRegistry();
         reputation = new MockReputationRegistry();
-        policy = new SpendingPolicy(address(identity));
-        market = new ServiceMarket(address(identity));
-        escrow =
-            new ServiceEscrow(address(usdc), address(identity), address(reputation), address(policy), address(market));
+
+        // Deploy implementations
+        SpendingPolicy policyImpl = new SpendingPolicy();
+        ServiceMarket marketImpl = new ServiceMarket();
+        ServiceEscrow escrowImpl = new ServiceEscrow();
+
+        // Deploy proxies
+        ERC1967Proxy policyProxy = new ERC1967Proxy(
+            address(policyImpl),
+            abi.encodeCall(SpendingPolicy.initialize, (address(identity), deployer))
+        );
+        ERC1967Proxy marketProxy = new ERC1967Proxy(
+            address(marketImpl),
+            abi.encodeCall(ServiceMarket.initialize, (address(identity), deployer))
+        );
+        ERC1967Proxy escrowProxy = new ERC1967Proxy(
+            address(escrowImpl),
+            abi.encodeCall(
+                ServiceEscrow.initialize,
+                (address(usdc), address(identity), address(reputation), address(policyProxy), address(marketProxy), deployer)
+            )
+        );
+
+        policy = SpendingPolicy(address(policyProxy));
+        market = ServiceMarket(address(marketProxy));
+        escrow = ServiceEscrow(address(escrowProxy));
         vm.stopPrank();
 
-        // Register agents
         vm.prank(alice);
         aliceAgentId = identity.register("ipfs://alice-agent");
 
         vm.prank(bob);
         bobAgentId = identity.register("ipfs://bob-agent");
 
-        // Fund alice with USDC
-        usdc.mint(alice, 100_000e6); // 100k USDC
+        usdc.mint(alice, 100_000e6);
     }
 
     // ==================== ServiceMarket Tests ====================
@@ -137,15 +158,7 @@ contract AgentCommerceTest is Test {
     function test_createAgreement() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob,
-            bobAgentId,
-            0, // human client
-            50e6,
-            block.timestamp + 1 days,
-            keccak256("audit task"),
-            0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("audit task"), 0);
         vm.stopPrank();
 
         ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
@@ -168,20 +181,23 @@ contract AgentCommerceTest is Test {
         escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp - 1, bytes32(0), 0);
     }
 
+    function test_createAgreement_revertNotAgentOwner() public {
+        vm.startPrank(charlie);
+        vm.expectRevert(ServiceEscrow.NotAgentOwner.selector);
+        escrow.createAgreement(bob, bobAgentId, aliceAgentId, 50e6, block.timestamp + 1 days, bytes32(0), 0);
+        vm.stopPrank();
+    }
+
     function test_confirmCompletion() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 1000e6);
-        uint256 agId =
-            escrow.createAgreement(bob, bobAgentId, 0, 1000e6, block.timestamp + 1 days, keccak256("task"), 0);
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 1000e6, block.timestamp + 1 days, keccak256("task"), 0);
         escrow.confirmCompletion(agId);
         vm.stopPrank();
 
-        // 0.1% fee = 1 USDC
         assertEq(usdc.balanceOf(bob), 999e6);
-        assertEq(usdc.balanceOf(deployer), 1e6); // fee to deployer (escrow owner)
+        assertEq(usdc.balanceOf(deployer), 1e6);
         assertEq(escrow.totalFeesCollected(), 1e6);
-
-        // Check reputation was recorded
         assertEq(reputation.feedbackCount(), 1);
         (uint256 agentId, int128 score,,,) = reputation.feedbacks(0);
         assertEq(agentId, bobAgentId);
@@ -208,6 +224,7 @@ contract AgentCommerceTest is Test {
 
         ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
         assertEq(uint8(agr.status), uint8(ServiceEscrow.Status.Disputed));
+        assertGt(agr.disputeDeadline, 0);
     }
 
     function test_dispute_byProvider() public {
@@ -242,14 +259,11 @@ contract AgentCommerceTest is Test {
         vm.stopPrank();
 
         uint256 aliceBefore = usdc.balanceOf(alice);
-
         vm.prank(deployer);
-        escrow.resolveDispute(agId, 100); // 100% to client
+        escrow.resolveDispute(agId, 100);
 
         assertEq(usdc.balanceOf(alice), aliceBefore + 50e6);
         assertEq(usdc.balanceOf(bob), 0);
-
-        // Provider lost dispute — negative reputation recorded
         assertEq(reputation.feedbackCount(), 1);
         (, int128 score,,,) = reputation.feedbacks(0);
         assertEq(score, -50);
@@ -263,14 +277,11 @@ contract AgentCommerceTest is Test {
         vm.stopPrank();
 
         uint256 aliceBefore = usdc.balanceOf(alice);
-
         vm.prank(deployer);
-        escrow.resolveDispute(agId, 30); // 30% client, 70% provider
+        escrow.resolveDispute(agId, 30);
 
         assertEq(usdc.balanceOf(alice), aliceBefore + 30e6);
         assertEq(usdc.balanceOf(bob), 70e6);
-
-        // Provider didn't "lose" (clientPct <= 50), no negative rep
         assertEq(reputation.feedbackCount(), 0);
     }
 
@@ -282,8 +293,40 @@ contract AgentCommerceTest is Test {
         vm.stopPrank();
 
         vm.prank(alice);
-        vm.expectRevert(ServiceEscrow.NotOwner.selector);
+        vm.expectRevert();
         escrow.resolveDispute(agId, 50);
+    }
+
+    function test_resolveExpiredDispute() public {
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
+        escrow.dispute(agId);
+        vm.stopPrank();
+
+        uint256 aliceBefore = usdc.balanceOf(alice);
+
+        vm.warp(block.timestamp + 31 days);
+
+        vm.prank(charlie);
+        escrow.resolveExpiredDispute(agId);
+
+        assertEq(usdc.balanceOf(alice), aliceBefore + 50e6);
+        ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
+        assertEq(uint8(agr.status), uint8(ServiceEscrow.Status.Resolved));
+    }
+
+    function test_resolveExpiredDispute_revertTooEarly() public {
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
+        escrow.dispute(agId);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 10 days);
+
+        vm.expectRevert(ServiceEscrow.DisputeNotExpired.selector);
+        escrow.resolveExpiredDispute(agId);
     }
 
     function test_claimExpired() public {
@@ -293,16 +336,12 @@ contract AgentCommerceTest is Test {
         vm.stopPrank();
 
         uint256 aliceBefore = usdc.balanceOf(alice);
-
-        // Fast forward past deadline
         vm.warp(block.timestamp + 2 days);
 
         vm.prank(alice);
         escrow.claimExpired(agId);
 
         assertEq(usdc.balanceOf(alice), aliceBefore + 50e6);
-
-        // Negative reputation for deadline miss
         assertEq(reputation.feedbackCount(), 1);
         (, int128 score,,,) = reputation.feedbacks(0);
         assertEq(score, -30);
@@ -331,8 +370,7 @@ contract AgentCommerceTest is Test {
 
     function test_setFee() public {
         vm.prank(deployer);
-        escrow.setFee(50); // 0.5%
-
+        escrow.setFee(50);
         assertEq(escrow.feeBps(), 50);
     }
 
@@ -395,11 +433,8 @@ contract AgentCommerceTest is Test {
         policy.setPolicy(alice, 500e6, 200e6);
 
         policy.checkPolicy(alice, 200e6, bob);
-
-        // Next day
         vm.warp(block.timestamp + 1 days);
 
-        // Should pass again
         bool ok = policy.checkPolicy(alice, 200e6, bob);
         assertTrue(ok);
     }
@@ -411,11 +446,9 @@ contract AgentCommerceTest is Test {
         policy.setAllowedCounterparty(alice, bob, true);
         vm.stopPrank();
 
-        // Bob is allowed
         bool ok = policy.checkPolicy(alice, 50e6, bob);
         assertTrue(ok);
 
-        // Charlie is not
         vm.expectRevert();
         policy.checkPolicy(alice, 50e6, charlie);
     }
@@ -443,47 +476,83 @@ contract AgentCommerceTest is Test {
         assertEq(policy.dailyRemaining(charlie), type(uint256).max);
     }
 
-    // ==================== Integration: Escrow + Policy ====================
+    // ==================== Pause Tests ====================
+
+    function test_pause_blocksNewListings() public {
+        vm.prank(deployer);
+        market.pause();
+
+        vm.prank(bob);
+        vm.expectRevert();
+        market.listService(bobAgentId, CAP_AUDIT, 50e6, "ipfs://audit");
+    }
+
+    function test_pause_blocksNewAgreements() public {
+        vm.prank(deployer);
+        escrow.pause();
+
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        vm.expectRevert();
+        escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
+        vm.stopPrank();
+    }
+
+    function test_pause_allowsDispute() public {
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
+        vm.stopPrank();
+
+        vm.prank(deployer);
+        escrow.pause();
+
+        vm.prank(alice);
+        escrow.dispute(agId);
+
+        ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
+        assertEq(uint8(agr.status), uint8(ServiceEscrow.Status.Disputed));
+    }
+
+    function test_pause_allowsExpiry() public {
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
+        vm.stopPrank();
+
+        vm.prank(deployer);
+        escrow.pause();
+
+        vm.warp(block.timestamp + 2 days);
+
+        vm.prank(alice);
+        escrow.claimExpired(agId);
+
+        ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
+        assertEq(uint8(agr.status), uint8(ServiceEscrow.Status.Expired));
+    }
+
+    // ==================== Integration ====================
 
     function test_escrow_respectsSpendingPolicy() public {
-        // Alice sets a policy on her agent wallet
         vm.prank(alice);
         policy.setPolicy(alice, 100e6, 300e6);
 
-        // Try to create an agreement above per-tx limit (as agent)
         vm.startPrank(alice);
         usdc.approve(address(escrow), 200e6);
 
         vm.expectRevert();
-        escrow.createAgreement(
-            bob,
-            bobAgentId,
-            aliceAgentId, // client IS an agent — policy enforced
-            200e6,
-            block.timestamp + 1 days,
-            keccak256("big task"),
-            0
-        );
+        escrow.createAgreement(bob, bobAgentId, aliceAgentId, 200e6, block.timestamp + 1 days, keccak256("big task"), 0);
         vm.stopPrank();
     }
 
     function test_escrow_humanBypassesPolicy() public {
-        // Alice sets a policy
         vm.prank(alice);
         policy.setPolicy(alice, 100e6, 300e6);
 
-        // As human (clientAgentId = 0), policy is NOT checked
         vm.startPrank(alice);
         usdc.approve(address(escrow), 200e6);
-        uint256 agId = escrow.createAgreement(
-            bob,
-            bobAgentId,
-            0, // human — no policy check
-            200e6,
-            block.timestamp + 1 days,
-            keccak256("big task"),
-            0
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 200e6, block.timestamp + 1 days, keccak256("big task"), 0);
         vm.stopPrank();
 
         assertEq(escrow.getAgreement(agId).amount, 200e6);
@@ -492,41 +561,30 @@ contract AgentCommerceTest is Test {
     // ==================== Full End-to-End Flow ====================
 
     function test_fullFlow() public {
-        // 1. Bob lists a service
         vm.prank(bob);
         uint256 serviceId = market.listService(bobAgentId, CAP_AUDIT, 50e6, "ipfs://audit-svc");
 
-        // 2. Alice discovers the service
         uint256[] memory auditServices = market.getServicesByCapability(CAP_AUDIT);
         assertEq(auditServices.length, 1);
         ServiceMarket.Service memory svc = market.getService(auditServices[0]);
         assertEq(svc.pricePerTask, 50e6);
 
-        // 3. Alice creates an agreement referencing the service
         vm.startPrank(alice);
         usdc.approve(address(escrow), 50e6);
-        uint256 agId = escrow.createAgreement(
-            bob, bobAgentId, 0, 50e6, block.timestamp + 7 days, keccak256("audit my contract at 0x1234"), serviceId
-        );
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 7 days, keccak256("audit my contract at 0x1234"), serviceId);
         vm.stopPrank();
 
-        // 4. Verify escrow holds the funds
         assertEq(usdc.balanceOf(address(escrow)), 50e6);
 
-        // 5. Alice confirms completion
         vm.prank(alice);
         escrow.confirmCompletion(agId);
 
-        // 6. Verify payouts (0.1% fee = 0.05 USDC = 50000)
-        uint256 expectedFee = (50e6 * 10) / 10000; // 50000
+        uint256 expectedFee = (50e6 * 10) / 10000;
         uint256 expectedPayout = 50e6 - expectedFee;
         assertEq(usdc.balanceOf(bob), expectedPayout);
         assertEq(escrow.totalFeesCollected(), expectedFee);
-
-        // 7. Verify reputation recorded
         assertEq(reputation.feedbackCount(), 1);
 
-        // 8. Verify agreement status
         ServiceEscrow.Agreement memory agr = escrow.getAgreement(agId);
         assertEq(uint8(agr.status), uint8(ServiceEscrow.Status.Completed));
         assertEq(agr.serviceId, serviceId);
