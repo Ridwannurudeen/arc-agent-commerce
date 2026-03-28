@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Stats } from "@/components/Stats";
+import { Dashboard } from "@/components/Dashboard";
 import { BrowseServices } from "@/components/BrowseServices";
 import { MyAgreements } from "@/components/MyAgreements";
 import { ListService } from "@/components/ListService";
@@ -16,6 +17,7 @@ import { useIsOwner } from "@/hooks/useIsOwner";
 import type { Tab, Prefill } from "@/lib/types";
 
 const TABS: { key: Tab; label: string; adminOnly?: boolean }[] = [
+  { key: "dashboard", label: "Dashboard" },
   { key: "services", label: "Browse Services" },
   { key: "agreements", label: "My Agreements" },
   { key: "my-services", label: "My Services" },
@@ -27,7 +29,7 @@ const TABS: { key: Tab; label: string; adminOnly?: boolean }[] = [
 ];
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("services");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const isOwner = useIsOwner();
@@ -61,6 +63,9 @@ export default function Home() {
           ))}
         </div>
 
+        {tab === "dashboard" && (
+          <Dashboard onNavigate={setTab} onViewAgent={handleViewAgent} />
+        )}
         {tab === "services" && (
           <BrowseServices onHire={handleHire} onViewAgent={handleViewAgent} />
         )}

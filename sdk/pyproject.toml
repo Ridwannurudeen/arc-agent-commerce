@@ -9,9 +9,24 @@ description = "Python SDK for Agent Commerce Protocol on Arc Network"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
+authors = [{ name = "Ridwan Nurudeen" }]
+keywords = ["arc", "agent", "commerce", "erc-8004", "usdc", "escrow", "web3", "ai-agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "web3>=6.0.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/Ridwannurudeen/arc-agent-commerce"
+Documentation = "https://github.com/Ridwannurudeen/arc-agent-commerce/tree/main/sdk#readme"
 
 [project.optional-dependencies]
 dev = [

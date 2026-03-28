@@ -1,4 +1,5 @@
 export type Tab =
+  | "dashboard"
   | "services"
   | "agreements"
   | "list-service"
