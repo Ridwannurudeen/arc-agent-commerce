@@ -78,6 +78,7 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     error TransferFailed();
     error NotAgentOwner();
     error DisputeNotExpired();
+    error ServiceNotActive();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -127,6 +128,12 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
         if (amount == 0) revert InvalidAmount();
         if (deadline <= block.timestamp) revert InvalidDeadline();
         if (identityRegistry.ownerOf(providerAgentId) == address(0)) revert ProviderNotRegistered();
+
+        // Validate service exists and is active (serviceId 0 = off-market, skip check)
+        if (serviceId > 0) {
+            (,,,,, bool active) = serviceMarket.services(serviceId);
+            if (!active) revert ServiceNotActive();
+        }
 
         if (clientAgentId > 0) {
             if (identityRegistry.ownerOf(clientAgentId) != msg.sender) revert NotAgentOwner();
