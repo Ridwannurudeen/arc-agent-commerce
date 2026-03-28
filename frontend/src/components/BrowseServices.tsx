@@ -51,8 +51,8 @@ export function BrowseServices({ onHire, onViewAgent }: Props) {
   const { data: batchServices } = useReadContracts({
     contracts: visibleIds.map((id) => ({
       address: CONTRACTS.SERVICE_MARKET,
-      abi: ServiceMarketABI,
-      functionName: "getService" as const,
+      abi: ServiceMarketABI as readonly unknown[],
+      functionName: "getService",
       args: [BigInt(id)],
       chainId: arcTestnet.id,
     })),
