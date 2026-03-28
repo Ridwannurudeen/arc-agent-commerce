@@ -268,6 +268,8 @@ class ArcCommerce:
                 "nonce": self._get_nonce(),
                 "chainId": self.chain_id,
             })
+            estimated_gas = self.w3.eth.estimate_gas(tx)
+            tx["gas"] = int(estimated_gas * 1.2)
             signed = self.account.sign_transaction(tx)
             tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
             logger.info(f"Transaction sent: {tx_hash.hex()}")
