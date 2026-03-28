@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useReadContract } from "wagmi";
+import { useReadContract, useReadContracts } from "wagmi";
 import { keccak256, toHex } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
@@ -48,6 +48,17 @@ export function BrowseServices({ onHire, onViewAgent }: Props) {
   const visibleIds = ids.slice(0, displayCount);
   const hasMore = ids.length > displayCount;
 
+  const { data: batchServices } = useReadContracts({
+    contracts: visibleIds.map((id) => ({
+      address: CONTRACTS.SERVICE_MARKET,
+      abi: ServiceMarketABI,
+      functionName: "getService" as const,
+      args: [BigInt(id)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: visibleIds.length > 0 },
+  });
+
   return (
     <div>
       <div className="filter-row">
@@ -74,14 +85,19 @@ export function BrowseServices({ onHire, onViewAgent }: Props) {
       ) : (
         <>
           <div className="service-list">
-            {visibleIds.map((id) => (
-              <ServiceCard
-                key={id}
-                serviceId={id}
-                onHire={onHire}
-                onViewAgent={onViewAgent}
-              />
-            ))}
+            {visibleIds.map((id, idx) => {
+              const result = batchServices?.[idx];
+              const svcData = result && result.status === "success" ? result.result : undefined;
+              return (
+                <ServiceCard
+                  key={id}
+                  serviceId={id}
+                  serviceData={svcData}
+                  onHire={onHire}
+                  onViewAgent={onViewAgent}
+                />
+              );
+            })}
           </div>
           {hasMore && (
             <div style={{ textAlign: "center", marginTop: "1rem" }}>
