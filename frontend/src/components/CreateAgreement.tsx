@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, keccak256, toHex, isAddress } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
@@ -18,6 +18,7 @@ type Props = {
 
 export function CreateAgreement({ prefill }: Props) {
   const { addToast } = useToast();
+  const { address } = useAccount();
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
   const { writeContract: approveWrite, data: approveHash } = useWriteContract();
@@ -29,6 +30,7 @@ export function CreateAgreement({ prefill }: Props) {
   const [amount, setAmount] = useState(prefill?.amount ?? "");
   const [deadlineHours, setDeadlineHours] = useState("24");
   const [taskDesc, setTaskDesc] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
 
   useEffect(() => {
     if (prefill) {
@@ -52,6 +54,27 @@ export function CreateAgreement({ prefill }: Props) {
 
   const parsedAmount = amount ? parseUnits(amount, 6) : BigInt(0);
   const hasAmount = parsedAmount > BigInt(0);
+
+  const { data: allowance } = useReadContract({
+    address: CONTRACTS.USDC,
+    abi: USDCABI,
+    functionName: "allowance",
+    args: [address!, CONTRACTS.SERVICE_ESCROW],
+    chainId: arcTestnet.id,
+    query: { enabled: !!address },
+  });
+
+  // Auto-advance to step 2 when approval succeeds
+  useEffect(() => {
+    if (isApproveSuccess) setStep(2);
+  }, [isApproveSuccess]);
+
+  // Skip step 1 if allowance already sufficient
+  useEffect(() => {
+    if (allowance !== undefined && parsedAmount > BigInt(0) && (allowance as bigint) >= parsedAmount) {
+      setStep(2);
+    }
+  }, [allowance, parsedAmount]);
 
   const { data: wouldPassResult } = useReadContract({
     address: CONTRACTS.SPENDING_POLICY,
@@ -255,17 +278,25 @@ export function CreateAgreement({ prefill }: Props) {
         )}
 
         <div className="actions">
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={handleApprove}
-            disabled={isApproving || !amount || !!validation.amount}
-          >
-            {isApproving ? "Approving..." : "1. Approve USDC"}
-          </button>
-          <button className="btn" type="submit" disabled={isLoading || !canSubmit}>
-            {isLoading ? "Creating..." : "2. Create Agreement"}
-          </button>
+          <div className="step-indicator" style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
+            <span style={{ opacity: step >= 1 ? 1 : 0.4 }}>1. Approve</span>
+            <span>&rarr;</span>
+            <span style={{ opacity: step >= 2 ? 1 : 0.4 }}>2. Create</span>
+          </div>
+          {step === 1 ? (
+            <button
+              type="button"
+              className="btn"
+              onClick={handleApprove}
+              disabled={isApproving || !amount || !!validation.amount}
+            >
+              {isApproving ? "Approving..." : "Approve USDC"}
+            </button>
+          ) : (
+            <button className="btn" type="submit" disabled={isLoading || !canSubmit}>
+              {isLoading ? "Creating..." : "Create Agreement"}
+            </button>
+          )}
         </div>
         {isSuccess && (
           <div style={{ marginTop: "0.75rem", color: "var(--green)" }}>
