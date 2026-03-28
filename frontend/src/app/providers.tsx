@@ -8,7 +8,15 @@ import { ToastProvider } from "@/context/ToastContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 10_000,
+        retry: 2,
+        retryDelay: 1000,
+      },
+    },
+  }));
 
   return (
     <ThemeProvider>

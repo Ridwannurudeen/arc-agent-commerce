@@ -9,21 +9,24 @@ import type { ServiceData } from "@/lib/types";
 
 type Props = {
   serviceId: number;
+  serviceData?: unknown;
   onHire: (provider: string, agentId: string, price: string) => void;
   onViewAgent?: (agentId: number) => void;
 };
 
-export function ServiceCard({ serviceId, onHire, onViewAgent }: Props) {
+export function ServiceCard({ serviceId, serviceData, onHire, onViewAgent }: Props) {
   const { data } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
     abi: ServiceMarketABI,
     functionName: "getService",
     args: [BigInt(serviceId)],
     chainId: arcTestnet.id,
+    query: { enabled: !serviceData },
   });
 
-  if (!data) return null;
-  const svc = data as unknown as ServiceData;
+  const raw = serviceData || data;
+  if (!raw) return null;
+  const svc = raw as unknown as ServiceData;
   if (!svc.active) return null;
 
   const priceStr = formatUnits(svc.pricePerTask, 6);

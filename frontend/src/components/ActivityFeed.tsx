@@ -1,6 +1,6 @@
 "use client";
 
-import { useReadContract } from "wagmi";
+import { useReadContract, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
@@ -13,21 +13,24 @@ type Props = {
 
 function ActivityFeedItem({
   agreementId,
+  data: prefetchedData,
   onViewAgent,
 }: {
   agreementId: number;
+  data?: AgreementData;
   onViewAgent: (agentId: number) => void;
 }) {
-  const { data } = useReadContract({
+  const { data: fetchedData } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
     abi: ServiceEscrowABI,
     functionName: "getAgreement",
     args: [BigInt(agreementId)],
     chainId: arcTestnet.id,
+    query: { enabled: !prefetchedData },
   });
 
-  if (!data) return null;
-  const agr = data as unknown as AgreementData;
+  const agr = (prefetchedData || fetchedData) as unknown as AgreementData;
+  if (!agr) return null;
   const statusLabel = STATUS_LABELS[agr.status] ?? "unknown";
 
   return (
@@ -85,21 +88,42 @@ export function ActivityFeed({ onViewAgent }: Props) {
   });
 
   const count = Number(nextId ?? 0);
+  const ids = count > 0 ? Array.from({ length: count }, (_, i) => count - 1 - i) : [];
+
+  const { data: batchAgreements } = useReadContracts({
+    contracts: ids.map((id) => ({
+      address: CONTRACTS.SERVICE_ESCROW,
+      abi: ServiceEscrowABI as any,
+      functionName: "getAgreement",
+      args: [BigInt(id)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: ids.length > 0 },
+  });
 
   if (count === 0) {
     return <div className="empty">No protocol activity yet.</div>;
   }
-
-  const ids = Array.from({ length: count }, (_, i) => count - 1 - i);
 
   return (
     <div>
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
         All protocol agreements (newest first)
       </div>
-      {ids.map((id) => (
-        <ActivityFeedItem key={id} agreementId={id} onViewAgent={onViewAgent} />
-      ))}
+      {ids.map((id, idx) => {
+        const result = batchAgreements?.[idx];
+        const agrData = result && result.status === "success"
+          ? (result.result as unknown as AgreementData)
+          : undefined;
+        return (
+          <ActivityFeedItem
+            key={id}
+            agreementId={id}
+            data={agrData}
+            onViewAgent={onViewAgent}
+          />
+        );
+      })}
     </div>
   );
 }

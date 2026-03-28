@@ -53,6 +53,8 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     mapping(address => uint256[]) internal _clientAgreements;
     mapping(address => uint256[]) internal _providerAgreements;
 
+    uint256[38] private __gap;
+
     event AgreementCreated(
         uint256 indexed agreementId, address indexed client, address indexed provider, uint256 amount, uint256 deadline
     );
@@ -76,6 +78,8 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     error TransferFailed();
     error NotAgentOwner();
     error DisputeNotExpired();
+    error ServiceNotActive();
+    error ZeroAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -90,6 +94,12 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
         address _serviceMarket,
         address _owner
     ) external initializer {
+        if (
+            _usdc == address(0) || _identityRegistry == address(0) || _reputationRegistry == address(0)
+                || _spendingPolicy == address(0) || _serviceMarket == address(0) || _owner == address(0)
+        ) {
+            revert ZeroAddress();
+        }
         __Pausable_init();
         __Ownable_init(_owner);
         __Ownable2Step_init();
@@ -125,6 +135,12 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
         if (amount == 0) revert InvalidAmount();
         if (deadline <= block.timestamp) revert InvalidDeadline();
         if (identityRegistry.ownerOf(providerAgentId) == address(0)) revert ProviderNotRegistered();
+
+        // Validate service exists and is active (serviceId 0 = off-market, skip check)
+        if (serviceId > 0) {
+            (,,,,, bool active) = serviceMarket.services(serviceId);
+            if (!active) revert ServiceNotActive();
+        }
 
         if (clientAgentId > 0) {
             if (identityRegistry.ownerOf(clientAgentId) != msg.sender) revert NotAgentOwner();

@@ -98,6 +98,20 @@ class ArcCommerce:
             abi=IDENTITY_REGISTRY_ABI,
         )
 
+        self._nonce = None  # Client-side nonce tracker
+
+    def _get_nonce(self):
+        """Get next nonce, using client-side tracking to avoid race conditions."""
+        if self._nonce is None:
+            self._nonce = self.w3.eth.get_transaction_count(self.account.address)
+        else:
+            self._nonce += 1
+        return self._nonce
+
+    def _reset_nonce(self):
+        """Reset nonce tracking (call after errors)."""
+        self._nonce = None
+
     # ── Retry helper ──
 
     def _retry(self, fn, max_retries=None, is_write=False):
@@ -248,40 +262,46 @@ class ArcCommerce:
         """Build, sign, and send a transaction."""
         if not self.account:
             raise ValueError("Private key required for write operations")
-        tx = tx_func.build_transaction({
-            "from": self.account.address,
-            "nonce": self.w3.eth.get_transaction_count(self.account.address),
-            "chainId": self.chain_id,
-        })
-        signed = self.account.sign_transaction(tx)
-        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Transaction sent: {tx_hash.hex()}")
-
         try:
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.tx_timeout)
-        except Exception as e:
-            if "timeout" in str(e).lower() or "TimeExhausted" in type(e).__name__:
-                raise TransactionTimeoutError(tx_hash.hex(), self.tx_timeout) from e
-            raise
+            tx = tx_func.build_transaction({
+                "from": self.account.address,
+                "nonce": self._get_nonce(),
+                "chainId": self.chain_id,
+            })
+            estimated_gas = self.w3.eth.estimate_gas(tx)
+            tx["gas"] = int(estimated_gas * 1.2)
+            signed = self.account.sign_transaction(tx)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Transaction sent: {tx_hash.hex()}")
 
-        if receipt["status"] != 1:
-            # Try to extract revert reason
-            reason = ""
             try:
-                self.w3.eth.call(tx, block_identifier=receipt["blockNumber"])
-            except Exception as call_err:
-                reason = str(call_err)
+                receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.tx_timeout)
+            except Exception as e:
+                if "timeout" in str(e).lower() or "TimeExhausted" in type(e).__name__:
+                    raise TransactionTimeoutError(tx_hash.hex(), self.tx_timeout) from e
+                raise
 
-            # Map known revert reasons to typed exceptions
-            if "PolicyCheckFailed" in reason:
-                raise PolicyViolationError(f"Transaction {tx_hash.hex()} failed policy check: {reason}")
-            if "insufficient" in reason.lower():
-                raise InsufficientBalanceError(f"Transaction {tx_hash.hex()}: {reason}")
+            if receipt["status"] != 1:
+                # Try to extract revert reason
+                reason = ""
+                try:
+                    self.w3.eth.call(tx, block_identifier=receipt["blockNumber"])
+                except Exception as call_err:
+                    reason = str(call_err)
 
-            raise TransactionRevertedError(tx_hash.hex(), reason)
+                # Map known revert reasons to typed exceptions
+                if "PolicyCheckFailed" in reason:
+                    raise PolicyViolationError(f"Transaction {tx_hash.hex()} failed policy check: {reason}")
+                if "insufficient" in reason.lower():
+                    raise InsufficientBalanceError(f"Transaction {tx_hash.hex()}: {reason}")
 
-        logger.info(f"Transaction confirmed: {tx_hash.hex()} (block {receipt['blockNumber']})")
-        return receipt
+                raise TransactionRevertedError(tx_hash.hex(), reason)
+
+            logger.info(f"Transaction confirmed: {tx_hash.hex()} (block {receipt['blockNumber']})")
+            return receipt
+        except Exception:
+            self._reset_nonce()
+            raise
 
     def list_service(
         self,
@@ -337,11 +357,11 @@ class ArcCommerce:
         task_hash = Web3.keccak(text=task_description)
 
         if auto_approve:
-            self._send_tx(
-                self.usdc.functions.approve(
-                    Web3.to_checksum_address(SERVICE_ESCROW_ADDRESS), amount
+            current_allowance = self.check_allowance()
+            if current_allowance < amount:
+                self._send_tx(
+                    self.usdc.functions.approve(self.escrow.address, amount)
                 )
-            )
 
         receipt = self._send_tx(
             self.escrow.functions.createAgreement(
@@ -374,6 +394,26 @@ class ArcCommerce:
         return self._send_tx(
             self.escrow.functions.claimExpired(agreement_id)
         )
+
+    def resolve_dispute(self, agreement_id: int, client_pct: int) -> dict:
+        """Resolve a dispute (owner only). client_pct: 0-100."""
+        return self._send_tx(
+            self.escrow.functions.resolveDispute(agreement_id, client_pct)
+        )
+
+    def resolve_expired_dispute(self, agreement_id: int) -> dict:
+        """Auto-resolve an expired dispute (anyone can call)."""
+        return self._send_tx(
+            self.escrow.functions.resolveExpiredDispute(agreement_id)
+        )
+
+    def check_allowance(self, spender: str = None) -> int:
+        """Check current USDC allowance for escrow contract."""
+        spender = spender or self.escrow.address
+        return self.usdc.functions.allowance(
+            self.account.address,
+            Web3.to_checksum_address(spender)
+        ).call()
 
     # ── SpendingPolicy write methods ──
 

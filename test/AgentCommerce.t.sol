@@ -194,6 +194,33 @@ contract AgentCommerceTest is Test {
         vm.stopPrank();
     }
 
+    function test_createAgreement_revertDeactivatedService() public {
+        // List a dummy service to consume serviceId 0 (which is the off-market skip value)
+        vm.prank(bob);
+        market.listService(bobAgentId, CAP_MONITOR, 10e6, "ipfs://dummy");
+
+        // Bob lists a service (gets serviceId 1), then delists it
+        vm.prank(bob);
+        uint256 sid = market.listService(bobAgentId, CAP_AUDIT, 50e6, "ipfs://audit");
+        vm.prank(bob);
+        market.delistService(sid);
+
+        // Alice tries to create agreement referencing deactivated service
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        vm.expectRevert(ServiceEscrow.ServiceNotActive.selector);
+        escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), sid);
+        vm.stopPrank();
+    }
+
+    function test_createAgreement_serviceIdZero_allowed() public {
+        vm.startPrank(alice);
+        usdc.approve(address(escrow), 50e6);
+        uint256 agId = escrow.createAgreement(bob, bobAgentId, 0, 50e6, block.timestamp + 1 days, keccak256("task"), 0);
+        vm.stopPrank();
+        assertEq(escrow.getAgreement(agId).serviceId, 0);
+    }
+
     function test_confirmCompletion() public {
         vm.startPrank(alice);
         usdc.approve(address(escrow), 1000e6);
