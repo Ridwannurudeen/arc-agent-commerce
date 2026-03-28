@@ -24,6 +24,8 @@ contract SpendingPolicy is Initializable, UUPSUpgradeable, Ownable2StepUpgradeab
     mapping(address => bool) public counterpartyRestricted;
     mapping(address => address) public policyOwners;
 
+    uint256[45] private __gap;
+
     event PolicySet(address indexed agent, uint256 maxPerTx, uint256 maxDaily);
     event CounterpartyAllowed(address indexed agent, address indexed counterparty, bool allowed);
     event CounterpartyRestrictionSet(address indexed agent, bool restricted);

@@ -26,6 +26,8 @@ contract ServiceMarket is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     mapping(bytes32 => uint256[]) internal _servicesByCapability;
     mapping(uint256 => uint256[]) internal _servicesByAgent;
 
+    uint256[45] private __gap;
+
     event ServiceListed(
         uint256 indexed serviceId, uint256 indexed agentId, bytes32 indexed capabilityHash, uint256 pricePerTask
     );

@@ -53,6 +53,8 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     mapping(address => uint256[]) internal _clientAgreements;
     mapping(address => uint256[]) internal _providerAgreements;
 
+    uint256[38] private __gap;
+
     event AgreementCreated(
         uint256 indexed agreementId, address indexed client, address indexed provider, uint256 amount, uint256 deadline
     );
