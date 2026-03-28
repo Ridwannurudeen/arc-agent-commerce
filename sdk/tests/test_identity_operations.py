@@ -1,6 +1,5 @@
 """Read-only tests for IdentityRegistry operations."""
 
-import pytest
 
 
 class TestGetAgentOwner:

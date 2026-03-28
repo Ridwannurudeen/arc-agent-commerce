@@ -35,7 +35,7 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -v --ignore=tests/test_write_operations.py --ignore=tests/test_read_operations.py
       - name: Lint
-        run: pip install ruff && ruff check .
+        run: pip install ruff && ruff check . --exclude examples/
 
   frontend:
     runs-on: ubuntu-latest

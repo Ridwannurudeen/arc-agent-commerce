@@ -21,7 +21,6 @@ import os
 import sys
 import time
 import warnings
-from functools import wraps
 
 # Suppress web3 ABI mismatch warnings (non-matching events in shared receipts)
 warnings.filterwarnings("ignore", message=".*MismatchedABI.*")
@@ -49,12 +48,11 @@ def retry(fn, retries=3, delay=3):
 from arc_commerce.constants import (
     SERVICE_MARKET_ADDRESS,
     SERVICE_ESCROW_ADDRESS,
-    USDC_ADDRESS,
 )
 from arc_commerce.types import AgreementStatus
 
 from demo_ui import (
-    CYAN, MAGENTA, GREEN, YELLOW, RED, BOLD, RESET, DIM,
+    CYAN, MAGENTA, GREEN, BOLD, RESET, DIM,
     banner, phase, agent_log, agent_sub, tx_link, usdc_fmt,
     check_line, report_box, summary_box, error_exit,
 )

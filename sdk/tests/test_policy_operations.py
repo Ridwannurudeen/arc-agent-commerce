@@ -1,6 +1,5 @@
 """Read-only tests for SpendingPolicy operations."""
 
-import pytest
 
 
 class TestGetPolicy:

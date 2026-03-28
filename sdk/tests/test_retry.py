@@ -1,6 +1,5 @@
 """Tests for retry logic."""
 import pytest
-from unittest.mock import MagicMock, patch
 from arc_commerce.client import ArcCommerce
 
 

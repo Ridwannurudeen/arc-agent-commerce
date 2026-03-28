@@ -7,7 +7,6 @@ from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
 
 from arc_commerce.constants import (
-    ARC_TESTNET_RPC,
     ARC_TESTNET_CHAIN_ID,
     USDC_ADDRESS,
     SERVICE_MARKET_ADDRESS,
@@ -25,7 +24,6 @@ from arc_commerce.abi import (
     ERC20_ABI,
 )
 from arc_commerce.errors import (
-    ArcCommerceError,
     TransactionRevertedError,
     TransactionTimeoutError,
     InsufficientBalanceError,

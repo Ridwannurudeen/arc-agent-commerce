@@ -1,5 +1,4 @@
 """Tests for Arc Commerce error types."""
-import pytest
 from arc_commerce.errors import (
     ArcCommerceError,
     TransactionRevertedError,

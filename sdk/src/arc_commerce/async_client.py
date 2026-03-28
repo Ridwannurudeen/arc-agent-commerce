@@ -1,5 +1,4 @@
 """Async version of the Arc Commerce client."""
-import asyncio
 import logging
 from web3 import AsyncWeb3, AsyncHTTPProvider
 from .constants import (
@@ -9,7 +8,6 @@ from .constants import (
     SPENDING_POLICY_ADDRESS,
 )
 from .types import Service, Agreement, AgreementStatus
-from .errors import TransactionRevertedError, TransactionTimeoutError
 from .abi import (
     SERVICE_MARKET_ABI,
     SERVICE_ESCROW_ABI,
