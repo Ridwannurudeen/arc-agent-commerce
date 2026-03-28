@@ -93,7 +93,7 @@ export function ActivityFeed({ onViewAgent }: Props) {
   const { data: batchAgreements } = useReadContracts({
     contracts: ids.map((id) => ({
       address: CONTRACTS.SERVICE_ESCROW,
-      abi: ServiceEscrowABI as readonly unknown[],
+      abi: ServiceEscrowABI as any,
       functionName: "getAgreement",
       args: [BigInt(id)],
       chainId: arcTestnet.id,
