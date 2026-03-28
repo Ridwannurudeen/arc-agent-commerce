@@ -357,11 +357,11 @@ class ArcCommerce:
         task_hash = Web3.keccak(text=task_description)
 
         if auto_approve:
-            self._send_tx(
-                self.usdc.functions.approve(
-                    Web3.to_checksum_address(SERVICE_ESCROW_ADDRESS), amount
+            current_allowance = self.check_allowance()
+            if current_allowance < amount:
+                self._send_tx(
+                    self.usdc.functions.approve(self.escrow.address, amount)
                 )
-            )
 
         receipt = self._send_tx(
             self.escrow.functions.createAgreement(
@@ -394,6 +394,26 @@ class ArcCommerce:
         return self._send_tx(
             self.escrow.functions.claimExpired(agreement_id)
         )
+
+    def resolve_dispute(self, agreement_id: int, client_pct: int) -> dict:
+        """Resolve a dispute (owner only). client_pct: 0-100."""
+        return self._send_tx(
+            self.escrow.functions.resolveDispute(agreement_id, client_pct)
+        )
+
+    def resolve_expired_dispute(self, agreement_id: int) -> dict:
+        """Auto-resolve an expired dispute (anyone can call)."""
+        return self._send_tx(
+            self.escrow.functions.resolveExpiredDispute(agreement_id)
+        )
+
+    def check_allowance(self, spender: str = None) -> int:
+        """Check current USDC allowance for escrow contract."""
+        spender = spender or self.escrow.address
+        return self.usdc.functions.allowance(
+            self.account.address,
+            Web3.to_checksum_address(spender)
+        ).call()
 
     # ── SpendingPolicy write methods ──
 
