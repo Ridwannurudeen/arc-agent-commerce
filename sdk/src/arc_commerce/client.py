@@ -98,6 +98,20 @@ class ArcCommerce:
             abi=IDENTITY_REGISTRY_ABI,
         )
 
+        self._nonce = None  # Client-side nonce tracker
+
+    def _get_nonce(self):
+        """Get next nonce, using client-side tracking to avoid race conditions."""
+        if self._nonce is None:
+            self._nonce = self.w3.eth.get_transaction_count(self.account.address)
+        else:
+            self._nonce += 1
+        return self._nonce
+
+    def _reset_nonce(self):
+        """Reset nonce tracking (call after errors)."""
+        self._nonce = None
+
     # ── Retry helper ──
 
     def _retry(self, fn, max_retries=None, is_write=False):
@@ -248,40 +262,44 @@ class ArcCommerce:
         """Build, sign, and send a transaction."""
         if not self.account:
             raise ValueError("Private key required for write operations")
-        tx = tx_func.build_transaction({
-            "from": self.account.address,
-            "nonce": self.w3.eth.get_transaction_count(self.account.address),
-            "chainId": self.chain_id,
-        })
-        signed = self.account.sign_transaction(tx)
-        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Transaction sent: {tx_hash.hex()}")
-
         try:
-            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.tx_timeout)
-        except Exception as e:
-            if "timeout" in str(e).lower() or "TimeExhausted" in type(e).__name__:
-                raise TransactionTimeoutError(tx_hash.hex(), self.tx_timeout) from e
-            raise
+            tx = tx_func.build_transaction({
+                "from": self.account.address,
+                "nonce": self._get_nonce(),
+                "chainId": self.chain_id,
+            })
+            signed = self.account.sign_transaction(tx)
+            tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Transaction sent: {tx_hash.hex()}")
 
-        if receipt["status"] != 1:
-            # Try to extract revert reason
-            reason = ""
             try:
-                self.w3.eth.call(tx, block_identifier=receipt["blockNumber"])
-            except Exception as call_err:
-                reason = str(call_err)
+                receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=self.tx_timeout)
+            except Exception as e:
+                if "timeout" in str(e).lower() or "TimeExhausted" in type(e).__name__:
+                    raise TransactionTimeoutError(tx_hash.hex(), self.tx_timeout) from e
+                raise
 
-            # Map known revert reasons to typed exceptions
-            if "PolicyCheckFailed" in reason:
-                raise PolicyViolationError(f"Transaction {tx_hash.hex()} failed policy check: {reason}")
-            if "insufficient" in reason.lower():
-                raise InsufficientBalanceError(f"Transaction {tx_hash.hex()}: {reason}")
+            if receipt["status"] != 1:
+                # Try to extract revert reason
+                reason = ""
+                try:
+                    self.w3.eth.call(tx, block_identifier=receipt["blockNumber"])
+                except Exception as call_err:
+                    reason = str(call_err)
 
-            raise TransactionRevertedError(tx_hash.hex(), reason)
+                # Map known revert reasons to typed exceptions
+                if "PolicyCheckFailed" in reason:
+                    raise PolicyViolationError(f"Transaction {tx_hash.hex()} failed policy check: {reason}")
+                if "insufficient" in reason.lower():
+                    raise InsufficientBalanceError(f"Transaction {tx_hash.hex()}: {reason}")
 
-        logger.info(f"Transaction confirmed: {tx_hash.hex()} (block {receipt['blockNumber']})")
-        return receipt
+                raise TransactionRevertedError(tx_hash.hex(), reason)
+
+            logger.info(f"Transaction confirmed: {tx_hash.hex()} (block {receipt['blockNumber']})")
+            return receipt
+        except Exception:
+            self._reset_nonce()
+            raise
 
     def list_service(
         self,
