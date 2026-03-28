@@ -8,11 +8,10 @@ import {ServiceEscrow} from "../src/ServiceEscrow.sol";
 import {SpendingPolicy} from "../src/SpendingPolicy.sol";
 
 contract DeployProxyScript is Script {
-    address constant IDENTITY_REGISTRY = 0x8004A818BFB912233c491871b3d84c89A494BD9e;
-    address constant REPUTATION_REGISTRY = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
-    address constant USDC = 0x3600000000000000000000000000000000000000;
-
     function run() external {
+        address IDENTITY_REGISTRY = vm.envAddress("IDENTITY_REGISTRY");
+        address REPUTATION_REGISTRY = vm.envAddress("REPUTATION_REGISTRY");
+        address USDC = vm.envAddress("USDC_ADDRESS");
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
         vm.startBroadcast(deployerKey);
