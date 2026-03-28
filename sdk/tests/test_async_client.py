@@ -1,6 +1,5 @@
 """Tests for AsyncArcCommerce client."""
 import inspect
-import pytest
 from arc_commerce.async_client import AsyncArcCommerce
 
 

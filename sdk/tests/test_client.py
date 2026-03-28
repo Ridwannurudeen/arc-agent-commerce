@@ -1,6 +1,6 @@
 """Tests for ArcCommerce client nonce tracking, gas estimation, and new methods."""
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 from arc_commerce.client import ArcCommerce
 from arc_commerce.errors import TransactionRevertedError
 
