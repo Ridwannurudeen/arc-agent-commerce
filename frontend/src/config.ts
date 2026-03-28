@@ -19,7 +19,11 @@ export const wagmiConfig = createConfig({
   chains: [arcTestnet],
   connectors: [injected()],
   transports: {
-    [arcTestnet.id]: http(),
+    [arcTestnet.id]: http("https://rpc.testnet.arc.network", {
+      timeout: 15_000,
+      retryCount: 3,
+      retryDelay: 1000,
+    }),
   },
 });
 
