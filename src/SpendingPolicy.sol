@@ -32,6 +32,7 @@ contract SpendingPolicy is Initializable, UUPSUpgradeable, Ownable2StepUpgradeab
 
     error NotPolicyOwner();
     error PolicyCheckFailed(string reason);
+    error ZeroAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -39,6 +40,7 @@ contract SpendingPolicy is Initializable, UUPSUpgradeable, Ownable2StepUpgradeab
     }
 
     function initialize(address _identityRegistry, address _owner) external initializer {
+        if (_identityRegistry == address(0) || _owner == address(0)) revert ZeroAddress();
         __Ownable_init(_owner);
         __Ownable2Step_init();
         identityRegistry = IERC8004Identity(_identityRegistry);

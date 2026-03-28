@@ -79,6 +79,7 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     error NotAgentOwner();
     error DisputeNotExpired();
     error ServiceNotActive();
+    error ZeroAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -93,6 +94,9 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
         address _serviceMarket,
         address _owner
     ) external initializer {
+        if (_usdc == address(0) || _identityRegistry == address(0) || _reputationRegistry == address(0)
+            || _spendingPolicy == address(0) || _serviceMarket == address(0) || _owner == address(0))
+            revert ZeroAddress();
         __Pausable_init();
         __Ownable_init(_owner);
         __Ownable2Step_init();

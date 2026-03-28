@@ -38,6 +38,7 @@ contract ServiceMarket is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     error AgentNotRegistered();
     error ServiceNotActive();
     error ZeroPrice();
+    error ZeroAddress();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -45,6 +46,7 @@ contract ServiceMarket is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     }
 
     function initialize(address _identityRegistry, address _owner) external initializer {
+        if (_identityRegistry == address(0) || _owner == address(0)) revert ZeroAddress();
         __Pausable_init();
         __Ownable_init(_owner);
         __Ownable2Step_init();
