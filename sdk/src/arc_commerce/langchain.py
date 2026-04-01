@@ -1,7 +1,6 @@
 """LangChain tool wrappers for Arc Agent Commerce Protocol."""
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
-from typing import Optional
 from arc_commerce import ArcCommerce
 
 
