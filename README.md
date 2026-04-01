@@ -57,9 +57,9 @@ ERC-8004 (Arc Native)
 
 | Contract | Address |
 |----------|---------|
-| PipelineOrchestrator (v3) | TBD -- deploy script ready |
-| CommerceHook (v3) | TBD -- deploy script ready |
-| AgentPolicy (v3) | TBD -- deploy script ready |
+| PipelineOrchestrator (v3) | `0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720` |
+| CommerceHook (v3) | `0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f` |
+| AgentPolicy (v3) | `0xB172b27Af9E084D574817b080C04a7629c606c0E` |
 | ServiceMarket (v2, legacy) | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
 | ServiceEscrow (v2, legacy) | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
 | SpendingPolicy (v2, legacy) | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |

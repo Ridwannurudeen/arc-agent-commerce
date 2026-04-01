@@ -35,10 +35,10 @@ export const CONTRACTS = {
   SERVICE_MARKET: (process.env.NEXT_PUBLIC_SERVICE_MARKET ?? "0x046e44E2DE09D2892eCeC4200bB3ecD298892f88") as `0x${string}`,
   SERVICE_ESCROW: (process.env.NEXT_PUBLIC_SERVICE_ESCROW ?? "0x365889e057a3ddABADB542e19f8199650B4df4Cf") as `0x${string}`,
   SPENDING_POLICY: (process.env.NEXT_PUBLIC_SPENDING_POLICY ?? "0x072bFf95A62Ef1109dBE0122f734D6bC649E2634") as `0x${string}`,
-  // V3 pipeline contracts (fill after deployment)
-  PIPELINE_ORCHESTRATOR: (process.env.NEXT_PUBLIC_PIPELINE_ORCHESTRATOR ?? "") as `0x${string}`,
-  COMMERCE_HOOK: (process.env.NEXT_PUBLIC_COMMERCE_HOOK ?? "") as `0x${string}`,
-  AGENT_POLICY: (process.env.NEXT_PUBLIC_AGENT_POLICY ?? "") as `0x${string}`,
+  // V3 pipeline contracts
+  PIPELINE_ORCHESTRATOR: (process.env.NEXT_PUBLIC_PIPELINE_ORCHESTRATOR ?? "0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720") as `0x${string}`,
+  COMMERCE_HOOK: (process.env.NEXT_PUBLIC_COMMERCE_HOOK ?? "0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f") as `0x${string}`,
+  AGENT_POLICY: (process.env.NEXT_PUBLIC_AGENT_POLICY ?? "0xB172b27Af9E084D574817b080C04a7629c606c0E") as `0x${string}`,
   // ERC-8183 (Arc native)
   AGENTIC_COMMERCE: (process.env.NEXT_PUBLIC_AGENTIC_COMMERCE ?? "0x0747EEf0706327138c69792bF28Cd525089e4583") as `0x${string}`,
   // Additional tokens

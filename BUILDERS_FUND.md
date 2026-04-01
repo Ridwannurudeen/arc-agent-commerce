@@ -58,6 +58,14 @@ pipeline_id = agent.create_pipeline(
 
 Protocol integrates with ERC-8183 which handles escrow natively. Value accrues from orchestration -- the pipeline layer provides coordination that individual jobs can't. Future: orchestration fees on pipeline creation.
 
+## Deployed Contracts (Arc Testnet)
+
+| Contract | Address |
+|----------|---------|
+| PipelineOrchestrator | `0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720` |
+| CommerceHook | `0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f` |
+| AgentPolicy | `0xB172b27Af9E084D574817b080C04a7629c606c0E` |
+
 ## Roadmap
 
 **Now**: Core v3 contracts, SDK, frontend, demo, 98 tests -- all complete on testnet.
