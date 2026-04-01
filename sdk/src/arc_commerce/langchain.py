@@ -57,6 +57,27 @@ class ArcApproveStage(BaseTool):
         return f"Stage (job #{job_id}) approved. Pipeline advanced."
 
 
+class FundStageInput(BaseModel):
+    pipeline_id: int = Field(description="The pipeline ID whose active stage to fund")
+
+
+class ArcFundStage(BaseTool):
+    name: str = "arc_fund_stage"
+    description: str = "Fund the active stage's ACP job after the provider has set a budget. Required step between stage activation and provider submission."
+    args_schema: type = FundStageInput
+    client: ArcCommerce = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, private_key: str, **kwargs):
+        super().__init__(client=ArcCommerce(private_key=private_key), **kwargs)
+
+    def _run(self, pipeline_id: int) -> str:
+        self.client.fund_stage(pipeline_id)
+        return f"Pipeline #{pipeline_id} active stage funded."
+
+
 class PipelineStatusInput(BaseModel):
     pipeline_id: int = Field(description="The pipeline ID to check")
 

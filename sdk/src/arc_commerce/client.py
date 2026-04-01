@@ -567,6 +567,11 @@ class ArcCommerce:
         logs = self.orchestrator.events.PipelineCreated().process_receipt(receipt)
         return logs[0]["args"]["pipelineId"] if logs else -1
 
+    def fund_stage(self, pipeline_id: int) -> dict:
+        """Fund the active stage's ACP job after provider sets a budget."""
+        self._require_orchestrator()
+        return self._send_tx(self.orchestrator.functions.fundStage(pipeline_id))
+
     def cancel_pipeline(self, pipeline_id: int) -> dict:
         """Cancel a pipeline and refund remaining budget."""
         self._require_orchestrator()
