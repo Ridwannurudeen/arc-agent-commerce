@@ -304,6 +304,16 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
         emit PipelineCancelled(pipelineId, refundAmount);
     }
 
+    /// @notice Fund the active stage's ACP job after the provider sets a budget.
+    ///         The orchestrator is the ACP job client and must call fund().
+    /// @param pipelineId The pipeline ID whose active stage to fund
+    function fundStage(uint256 pipelineId) external {
+        Pipeline storage p = pipelines[pipelineId];
+        if (p.status != PipelineStatus.Active) revert PipelineNotActive();
+        Stage storage s = stages[pipelineId][p.currentStage];
+        acp.fund(s.jobId, "");
+    }
+
     // ---- View ----
 
     /// @notice Get all stages for a pipeline
@@ -334,12 +344,16 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
         IERC20(p.currency).approve(address(acp), s.budget);
 
         // Create an ERC-8183 job on ACP
+        // Hook is address(0) because ACP whitelists hooks — CommerceHook
+        // serves as evaluator (can call complete/reject) which doesn't
+        // require whitelisting. Auto-approve via afterAction callback is
+        // not available; use approveStage() for manual approval.
         uint256 jobId = acp.createJob(
             s.providerAddress,
             address(commerceHook), // evaluator
             p.deadline,
             "", // description
-            address(commerceHook) // hook
+            address(0) // hook (ACP requires whitelist)
         );
 
         s.jobId = jobId;
