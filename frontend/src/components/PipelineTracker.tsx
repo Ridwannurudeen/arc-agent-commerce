@@ -1,49 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 import CommerceHookABI from "@/abi/CommerceHook.json";
-import { capabilityName } from "@/lib/constants";
+import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
+import { capabilityName, PIPELINE_STATUS, STAGE_STATUS, JOB_STATUS } from "@/lib/constants";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
-
-const PIPELINE_STATUS = ["Active", "Completed", "Halted", "Cancelled"];
-const STAGE_STATUS = ["Pending", "Active", "Completed", "Failed"];
-
-const STATUS_COLORS: Record<string, string> = {
-  Pending: "var(--text-dim)",
-  Active: "var(--blue, #3b82f6)",
-  Completed: "var(--green)",
-  Failed: "var(--red)",
-};
+import type { PipelineData, StageData } from "@/lib/types";
 
 type Props = {
   pipelineId: number;
-};
-
-type PipelineData = {
-  clientAgentId: bigint;
-  client: string;
-  currency: string;
-  totalBudget: bigint;
-  totalSpent: bigint;
-  currentStage: bigint;
-  stageCount: bigint;
-  status: number;
-  createdAt: bigint;
-  deadline: bigint;
-};
-
-type StageData = {
-  providerAgentId: bigint;
-  providerAddress: string;
-  capabilityHash: string;
-  budget: bigint;
-  jobId: bigint;
-  status: number;
 };
 
 export function PipelineTracker({ pipelineId }: Props) {
@@ -58,6 +28,10 @@ export function PipelineTracker({ pipelineId }: Props) {
   const { writeContract: rejectWrite, data: rejectHash } = useWriteContract();
   const { isLoading: isRejecting, isSuccess: isRejectSuccess } = useWaitForTransactionReceipt({ hash: rejectHash });
 
+  // Fund stage tx
+  const { writeContract: fundWrite, data: fundHash } = useWriteContract();
+  const { isLoading: isFunding, isSuccess: isFundSuccess } = useWaitForTransactionReceipt({ hash: fundHash });
+
   // Cancel pipeline tx
   const { writeContract: cancelWrite, data: cancelHash } = useWriteContract();
   const { isLoading: isCancelling, isSuccess: isCancelSuccess } = useWaitForTransactionReceipt({ hash: cancelHash });
@@ -71,7 +45,6 @@ export function PipelineTracker({ pipelineId }: Props) {
     functionName: "pipelines",
     args: [BigInt(pipelineId)],
     chainId: arcTestnet.id,
-    query: { enabled: !!CONTRACTS.PIPELINE_ORCHESTRATOR },
   });
 
   // Fetch stages
@@ -81,31 +54,9 @@ export function PipelineTracker({ pipelineId }: Props) {
     functionName: "getStages",
     args: [BigInt(pipelineId)],
     chainId: arcTestnet.id,
-    query: { enabled: !!CONTRACTS.PIPELINE_ORCHESTRATOR },
   });
 
-  // Toast on approve
-  useEffect(() => {
-    if (isApproveSuccess && approveHash) {
-      addToast("Stage approved", "success", approveHash);
-    }
-  }, [isApproveSuccess, approveHash, addToast]);
-
-  // Toast on reject
-  useEffect(() => {
-    if (isRejectSuccess && rejectHash) {
-      addToast("Stage rejected", "success", rejectHash);
-    }
-  }, [isRejectSuccess, rejectHash, addToast]);
-
-  // Toast on cancel
-  useEffect(() => {
-    if (isCancelSuccess && cancelHash) {
-      addToast("Pipeline cancelled", "success", cancelHash);
-    }
-  }, [isCancelSuccess, cancelHash, addToast]);
-
-  // Parse pipeline data — useReadContract returns a tuple as an array
+  // Parse pipeline data
   const pipelineArr = pipelineRaw as unknown[] | undefined;
   const pipeline: PipelineData | undefined = pipelineArr
     ? {
@@ -125,14 +76,56 @@ export function PipelineTracker({ pipelineId }: Props) {
   const stages = (stagesRaw as StageData[] | undefined) ?? [];
   const isClient = pipeline && address && pipeline.client.toLowerCase() === address.toLowerCase();
   const isActive = pipeline?.status === 0;
-
-  // Find the active stage's jobId for approve/reject
   const activeStageIndex = pipeline ? Number(pipeline.currentStage) : -1;
   const activeStage = stages[activeStageIndex];
   const activeJobId = activeStage?.jobId;
 
+  // Fetch ACP job status for each stage with a jobId
+  const jobIds = stages.map((s) => Number(s.jobId)).filter((id) => id > 0);
+  const { data: jobsRaw } = useReadContracts({
+    contracts: stages
+      .filter((s) => Number(s.jobId) > 0)
+      .map((s) => ({
+        address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
+        abi: AgenticCommerceABI as any,
+        functionName: "getJob",
+        args: [s.jobId],
+      })),
+    query: { enabled: jobIds.length > 0 },
+  });
+
+  // Map jobId -> job status
+  const jobStatusMap = new Map<number, { status: number; budget: bigint }>();
+  if (jobsRaw) {
+    const stagesWithJobs = stages.filter((s) => Number(s.jobId) > 0);
+    stagesWithJobs.forEach((s, i) => {
+      const r = jobsRaw[i];
+      if (r?.status === "success" && r.result) {
+        const job = r.result as any;
+        jobStatusMap.set(Number(s.jobId), {
+          status: Number(job.status ?? job[7]),
+          budget: BigInt(job.budget ?? job[5]),
+        });
+      }
+    });
+  }
+
+  // Toasts
+  useEffect(() => {
+    if (isApproveSuccess && approveHash) addToast("Stage approved", "success", approveHash);
+  }, [isApproveSuccess, approveHash]);
+  useEffect(() => {
+    if (isRejectSuccess && rejectHash) addToast("Stage rejected", "success", rejectHash);
+  }, [isRejectSuccess, rejectHash]);
+  useEffect(() => {
+    if (isFundSuccess && fundHash) addToast("Stage funded", "success", fundHash);
+  }, [isFundSuccess, fundHash]);
+  useEffect(() => {
+    if (isCancelSuccess && cancelHash) addToast("Pipeline cancelled", "success", cancelHash);
+  }, [isCancelSuccess, cancelHash]);
+
   const handleApprove = () => {
-    if (!activeJobId || !CONTRACTS.COMMERCE_HOOK) return;
+    if (!activeJobId) return;
     approveWrite(
       {
         address: CONTRACTS.COMMERCE_HOOK,
@@ -146,13 +139,26 @@ export function PipelineTracker({ pipelineId }: Props) {
   };
 
   const handleReject = () => {
-    if (!activeJobId || !CONTRACTS.COMMERCE_HOOK) return;
+    if (!activeJobId) return;
     rejectWrite(
       {
         address: CONTRACTS.COMMERCE_HOOK,
         abi: CommerceHookABI,
         functionName: "rejectStage",
         args: [activeJobId, rejectReason || "Rejected by client"],
+        chainId: arcTestnet.id,
+      },
+      { onError: (err) => addToast(parseContractError(err), "error") }
+    );
+  };
+
+  const handleFundStage = () => {
+    fundWrite(
+      {
+        address: CONTRACTS.PIPELINE_ORCHESTRATOR,
+        abi: PipelineOrchestratorABI,
+        functionName: "fundStage",
+        args: [BigInt(pipelineId)],
         chainId: arcTestnet.id,
       },
       { onError: (err) => addToast(parseContractError(err), "error") }
@@ -178,13 +184,73 @@ export function PipelineTracker({ pipelineId }: Props) {
 
   const statusLabel = PIPELINE_STATUS[pipeline.status] ?? "Unknown";
 
+  // Determine what action is needed per stage
+  function getStageAction(stage: StageData, stageIndex: number) {
+    if (stage.status !== 1) return null; // Only active stages have actions
+    const jobId = Number(stage.jobId);
+    const jobInfo = jobStatusMap.get(jobId);
+    if (!jobInfo) return <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Loading job...</span>;
+
+    const jobStatus = jobInfo.status;
+    const jobBudget = jobInfo.budget;
+
+    // Open + no budget
+    if (jobStatus === 0 && jobBudget === BigInt(0)) {
+      return <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Waiting for provider to set budget</span>;
+    }
+    // Open + budget set → fund
+    if (jobStatus === 0 && jobBudget > BigInt(0)) {
+      return (
+        <button className="btn-sm" onClick={handleFundStage} disabled={isFunding} style={{ background: "var(--accent)", color: "#fff" }}>
+          {isFunding ? "Funding..." : `Fund Stage (${formatUnits(jobBudget, 6)} USDC)`}
+        </button>
+      );
+    }
+    // Funded
+    if (jobStatus === 1) {
+      return <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Waiting for provider to submit deliverable</span>;
+    }
+    // Submitted → approve/reject
+    if (jobStatus === 2) {
+      return (
+        <div>
+          <div style={{ fontSize: "0.75rem", color: "var(--yellow)", marginBottom: "0.35rem" }}>
+            Deliverable submitted — review and approve or reject
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <button className="btn-sm" onClick={handleApprove} disabled={isApproving}>
+              {isApproving ? "Approving..." : "Approve"}
+            </button>
+            <input
+              type="text"
+              placeholder="Reason (optional)"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              style={{ padding: "0.3rem 0.5rem", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text)", fontSize: "0.8rem", width: "150px" }}
+            />
+            <button
+              className="btn-sm"
+              style={{ background: "var(--red)", color: "#fff" }}
+              onClick={handleReject}
+              disabled={isRejecting}
+            >
+              {isRejecting ? "..." : "Reject"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
   return (
     <div style={{ marginTop: "0.75rem" }}>
-      {/* Progress bar */}
+      {/* Stage progress */}
       <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem" }}>
         {stages.map((stage, i) => {
           const label = STAGE_STATUS[stage.status] ?? "Unknown";
-          const color = STATUS_COLORS[label] ?? "var(--text-dim)";
+          const jobInfo = jobStatusMap.get(Number(stage.jobId));
+          const jobLabel = jobInfo ? JOB_STATUS[jobInfo.status] : "";
           return (
             <div
               key={i}
@@ -194,15 +260,21 @@ export function PipelineTracker({ pipelineId }: Props) {
                 padding: "0.5rem 0.25rem",
                 borderRadius: "0.25rem",
                 fontSize: "0.7rem",
-                background: stage.status === 2 ? "var(--green)" : stage.status === 1 ? "var(--blue, #3b82f6)" : "var(--surface)",
-                color: stage.status >= 1 ? "#fff" : "var(--text)",
-                opacity: stage.status === 0 ? 0.5 : 1,
+                background:
+                  stage.status === 2 ? "rgba(34, 197, 94, 0.2)" :
+                  stage.status === 3 ? "rgba(239, 68, 68, 0.2)" :
+                  stage.status === 1 ? "rgba(59, 130, 246, 0.15)" :
+                  "rgba(255,255,255,0.03)",
+                border: stage.status === 1 ? "1px solid var(--accent)" : "1px solid transparent",
               }}
             >
               <div style={{ fontWeight: 600 }}>Stage {i + 1}</div>
               <div>{capabilityName(stage.capabilityHash)}</div>
-              <div style={{ marginTop: "0.15rem", color: stage.status >= 1 ? "#fff" : color }}>
-                {label}
+              <div style={{ color: stage.status === 2 ? "var(--green)" : stage.status === 3 ? "var(--red)" : "var(--text-dim)" }}>
+                {label}{jobLabel ? ` (${jobLabel})` : ""}
+              </div>
+              <div style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>
+                {formatUnits(stage.budget, 6)} USDC
               </div>
             </div>
           );
@@ -211,44 +283,21 @@ export function PipelineTracker({ pipelineId }: Props) {
 
       {/* Budget summary */}
       <div style={{ display: "flex", gap: "1rem", fontSize: "0.8rem", marginBottom: "0.75rem", color: "var(--text-dim)" }}>
-        <span>
-          Spent: {formatUnits(pipeline.totalSpent, 6)} / {formatUnits(pipeline.totalBudget, 6)}
-        </span>
+        <span>Spent: {formatUnits(pipeline.totalSpent, 6)} / {formatUnits(pipeline.totalBudget, 6)} USDC</span>
         <span>Status: <strong style={{ color: statusLabel === "Active" ? "var(--green)" : "var(--text)" }}>{statusLabel}</strong></span>
       </div>
 
-      {/* Actions for client on active pipeline */}
+      {/* Active stage action for client */}
       {isClient && isActive && activeStage && activeStage.status === 1 && (
         <div style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "0.75rem", marginBottom: "0.75rem" }}>
           <div style={{ fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text-dim)" }}>
-            Stage {activeStageIndex + 1} is active (Job #{activeJobId?.toString()})
+            Stage {activeStageIndex + 1} — Job #{activeJobId?.toString()}
           </div>
-          <div className="form-group" style={{ marginBottom: "0.5rem" }}>
-            <input
-              type="text"
-              placeholder="Rejection reason (optional)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              style={{ fontSize: "0.8rem" }}
-            />
-          </div>
-          <div className="actions" style={{ gap: "0.5rem" }}>
-            <button className="btn btn-sm" onClick={handleApprove} disabled={isApproving}>
-              {isApproving ? "Approving..." : "Approve Stage"}
-            </button>
-            <button
-              className="btn btn-outline btn-sm"
-              style={{ borderColor: "var(--red)", color: "var(--red)" }}
-              onClick={handleReject}
-              disabled={isRejecting}
-            >
-              {isRejecting ? "Rejecting..." : "Reject Stage"}
-            </button>
-          </div>
+          {getStageAction(activeStage, activeStageIndex)}
         </div>
       )}
 
-      {/* Cancel button */}
+      {/* Cancel */}
       {isClient && isActive && (
         <button
           className="btn btn-outline btn-sm"

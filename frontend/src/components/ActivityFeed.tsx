@@ -1,127 +1,175 @@
 "use client";
 
+import { useMemo } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
-import { STATUS_LABELS } from "@/lib/constants";
+import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
+import { STATUS_LABELS, PIPELINE_STATUS } from "@/lib/constants";
 import type { AgreementData } from "@/lib/types";
 
 type Props = {
   onViewAgent: (agentId: number) => void;
 };
 
-function ActivityFeedItem({
-  agreementId,
-  data: prefetchedData,
-  onViewAgent,
-}: {
-  agreementId: number;
-  data?: AgreementData;
-  onViewAgent: (agentId: number) => void;
-}) {
-  const { data: fetchedData } = useReadContract({
-    address: CONTRACTS.SERVICE_ESCROW,
-    abi: ServiceEscrowABI,
-    functionName: "getAgreement",
-    args: [BigInt(agreementId)],
-    chainId: arcTestnet.id,
-    query: { enabled: !prefetchedData },
-  });
-
-  const agr = (prefetchedData || fetchedData) as unknown as AgreementData;
-  if (!agr) return null;
-  const statusLabel = STATUS_LABELS[agr.status] ?? "unknown";
-
-  return (
-    <div className="agreement-item">
-      <div className="row">
-        <span className="label">Agreement #{agreementId}</span>
-        <span className={`status ${statusLabel}`}>{statusLabel.toUpperCase()}</span>
-      </div>
-      <div className="row">
-        <span className="label">Amount</span>
-        <span>{formatUnits(agr.amount, 6)} USDC</span>
-      </div>
-      <div className="row">
-        <span className="label">Client</span>
-        <span>
-          <span className="addr">
-            {agr.client.slice(0, 6)}...{agr.client.slice(-4)}
-          </span>{" "}
-          (
-          <span
-            className="agent-link"
-            onClick={() => onViewAgent(Number(agr.clientAgentId))}
-          >
-            Agent #{agr.clientAgentId.toString()}
-          </span>
-          )
-        </span>
-      </div>
-      <div className="row">
-        <span className="label">Provider</span>
-        <span>
-          <span className="addr">
-            {agr.provider.slice(0, 6)}...{agr.provider.slice(-4)}
-          </span>{" "}
-          (
-          <span
-            className="agent-link"
-            onClick={() => onViewAgent(Number(agr.providerAgentId))}
-          >
-            Agent #{agr.providerAgentId.toString()}
-          </span>
-          )
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function ActivityFeed({ onViewAgent }: Props) {
-  const { data: nextId } = useReadContract({
+  // Agreements
+  const { data: nextAgrId } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
     abi: ServiceEscrowABI,
     functionName: "nextAgreementId",
     chainId: arcTestnet.id,
   });
 
-  const count = Number(nextId ?? 0);
-  const ids = count > 0 ? Array.from({ length: count }, (_, i) => count - 1 - i) : [];
+  const agrCount = Number(nextAgrId ?? 0);
+  const agrIds = Array.from({ length: agrCount }, (_, i) => i);
 
-  const { data: batchAgreements } = useReadContracts({
-    contracts: ids.map((id) => ({
-      address: CONTRACTS.SERVICE_ESCROW,
+  const { data: agrBatch } = useReadContracts({
+    contracts: agrIds.map((id) => ({
+      address: CONTRACTS.SERVICE_ESCROW as `0x${string}`,
       abi: ServiceEscrowABI as any,
       functionName: "getAgreement",
       args: [BigInt(id)],
       chainId: arcTestnet.id,
     })),
-    query: { enabled: ids.length > 0 },
+    query: { enabled: agrCount > 0 },
   });
 
-  if (count === 0) {
+  // Pipelines
+  const { data: nextPipId } = useReadContract({
+    address: CONTRACTS.PIPELINE_ORCHESTRATOR,
+    abi: PipelineOrchestratorABI,
+    functionName: "nextPipelineId",
+    chainId: arcTestnet.id,
+  });
+
+  const pipCount = Number(nextPipId ?? 0);
+  const pipIds = Array.from({ length: pipCount }, (_, i) => i);
+
+  const { data: pipBatch } = useReadContracts({
+    contracts: pipIds.map((id) => ({
+      address: CONTRACTS.PIPELINE_ORCHESTRATOR as `0x${string}`,
+      abi: PipelineOrchestratorABI as any,
+      functionName: "pipelines",
+      args: [BigInt(id)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: pipCount > 0 },
+  });
+
+  // Build unified activity list
+  type ActivityItem = {
+    type: "agreement" | "pipeline";
+    id: number;
+    timestamp: bigint;
+    data: any;
+  };
+
+  const items = useMemo(() => {
+    const list: ActivityItem[] = [];
+
+    // Agreements
+    if (agrBatch) {
+      agrBatch.forEach((r, i) => {
+        if (r.status !== "success" || !r.result) return;
+        const agr = r.result as unknown as AgreementData;
+        list.push({ type: "agreement", id: i, timestamp: agr.deadline, data: agr });
+      });
+    }
+
+    // Pipelines
+    if (pipBatch) {
+      pipBatch.forEach((r, i) => {
+        if (r.status !== "success" || !r.result) return;
+        const arr = r.result as unknown[];
+        list.push({
+          type: "pipeline",
+          id: i,
+          timestamp: arr[8] as bigint, // createdAt
+          data: {
+            clientAgentId: Number(arr[0]),
+            totalBudget: arr[3] as bigint,
+            stageCount: Number(arr[6]),
+            status: Number(arr[7]),
+          },
+        });
+      });
+    }
+
+    // Sort by timestamp descending
+    list.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
+    return list;
+  }, [agrBatch, pipBatch]);
+
+  if (items.length === 0) {
     return <div className="empty">No protocol activity yet.</div>;
   }
 
   return (
     <div>
+      <h2 style={{ marginBottom: "0.5rem" }}>Activity</h2>
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
-        All protocol agreements (newest first)
+        All on-chain activity (newest first)
       </div>
-      {ids.map((id, idx) => {
-        const result = batchAgreements?.[idx];
-        const agrData = result && result.status === "success"
-          ? (result.result as unknown as AgreementData)
-          : undefined;
+      {items.map((item) => {
+        if (item.type === "pipeline") {
+          const p = item.data;
+          const statusLabel = PIPELINE_STATUS[p.status] ?? "Unknown";
+          return (
+            <div key={`pip-${item.id}`} className="agreement-item">
+              <div className="row">
+                <span className="label">Pipeline #{item.id}</span>
+                <span className={`status ${statusLabel.toLowerCase() === "active" ? "active" : statusLabel.toLowerCase() === "completed" ? "completed" : "expired"}`}>
+                  {statusLabel}
+                </span>
+              </div>
+              <div className="row">
+                <span className="label">Budget</span>
+                <span>{formatUnits(p.totalBudget, 6)} USDC</span>
+              </div>
+              <div className="row">
+                <span className="label">Stages</span>
+                <span>{p.stageCount}</span>
+              </div>
+              <div className="row">
+                <span className="label">Client Agent</span>
+                <span
+                  className="agent-link"
+                  onClick={() => onViewAgent(p.clientAgentId)}
+                >
+                  #{p.clientAgentId}
+                </span>
+              </div>
+            </div>
+          );
+        }
+
+        // Agreement
+        const agr = item.data as AgreementData;
+        const statusLabel = STATUS_LABELS[agr.status] ?? "unknown";
         return (
-          <ActivityFeedItem
-            key={id}
-            agreementId={id}
-            data={agrData}
-            onViewAgent={onViewAgent}
-          />
+          <div key={`agr-${item.id}`} className="agreement-item">
+            <div className="row">
+              <span className="label">Agreement #{item.id}</span>
+              <span className={`status ${statusLabel}`}>{statusLabel.toUpperCase()}</span>
+            </div>
+            <div className="row">
+              <span className="label">Amount</span>
+              <span>{formatUnits(agr.amount, 6)} USDC</span>
+            </div>
+            <div className="row">
+              <span className="label">Provider</span>
+              <span>
+                <span
+                  className="agent-link"
+                  onClick={() => onViewAgent(Number(agr.providerAgentId))}
+                >
+                  Agent #{agr.providerAgentId.toString()}
+                </span>
+              </span>
+            </div>
+          </div>
         );
       })}
     </div>

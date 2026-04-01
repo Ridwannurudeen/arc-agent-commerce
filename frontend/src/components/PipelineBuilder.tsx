@@ -24,11 +24,36 @@ const emptyStage = (): StageInput => ({
   budget: "",
 });
 
-export function PipelineBuilder() {
+type Props = {
+  prefill?: { agentId: number; provider: string; capability: string; price: bigint } | null;
+  onClearPrefill?: () => void;
+};
+
+export function PipelineBuilder({ prefill, onClearPrefill }: Props = {}) {
   const { addToast } = useToast();
   const { address } = useAccount();
 
   const [stages, setStages] = useState<StageInput[]>([emptyStage()]);
+
+  // Apply prefill from marketplace hire
+  useEffect(() => {
+    if (prefill) {
+      const matchedCap = CAPABILITY_NAMES.find(
+        ([raw]) => keccak256(toHex(raw)) === prefill.capability.toLowerCase()
+      );
+      const prefilled: StageInput = {
+        providerAddress: prefill.provider,
+        providerAgentId: String(prefill.agentId),
+        capability: matchedCap?.[0] ?? CAPABILITY_NAMES[0][0],
+        budget: formatUnits(prefill.price, 6),
+      };
+      setStages((prev) => {
+        if (prev.length === 1 && !prev[0].providerAddress) return [prefilled];
+        return [...prev, prefilled];
+      });
+      onClearPrefill?.();
+    }
+  }, [prefill]);
   const [clientAgentId, setClientAgentId] = useState("0");
   const [currency, setCurrency] = useState<"usdc" | "eurc">("usdc");
   const [deadlineHours, setDeadlineHours] = useState("24");
