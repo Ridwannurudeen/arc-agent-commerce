@@ -9,18 +9,28 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from arc_commerce.constants import (
     ARC_TESTNET_CHAIN_ID,
     USDC_ADDRESS,
+    EURC_ADDRESS,
     SERVICE_MARKET_ADDRESS,
     SERVICE_ESCROW_ADDRESS,
     SPENDING_POLICY_ADDRESS,
     IDENTITY_REGISTRY_ADDRESS,
+    PIPELINE_ORCHESTRATOR_ADDRESS,
+    COMMERCE_HOOK_ADDRESS,
+    AGENT_POLICY_ADDRESS,
     get_network_config,
 )
-from arc_commerce.types import Service, Agreement, AgreementStatus
+from arc_commerce.types import (
+    Service, Agreement, AgreementStatus,
+    Pipeline, Stage, PipelineStatus, StageStatus,
+)
 from arc_commerce.abi import (
     SERVICE_MARKET_ABI,
     SERVICE_ESCROW_ABI,
     SPENDING_POLICY_ABI,
     IDENTITY_REGISTRY_ABI,
+    PIPELINE_ORCHESTRATOR_ABI,
+    COMMERCE_HOOK_ABI,
+    AGENT_POLICY_ABI,
     ERC20_ABI,
 )
 from arc_commerce.errors import (
@@ -46,6 +56,9 @@ class ArcCommerce:
         escrow_address: str = None,
         market_address: str = None,
         policy_address: str = None,
+        orchestrator_address: str = None,
+        hook_address: str = None,
+        agent_policy_address: str = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
         tx_timeout: int = 120,
@@ -97,6 +110,31 @@ class ArcCommerce:
             address=Web3.to_checksum_address(identity_addr),
             abi=IDENTITY_REGISTRY_ABI,
         )
+
+        # V3 pipeline contracts (optional — only instantiated if addresses are set)
+        orch_addr = orchestrator_address or config.get("pipeline_orchestrator", PIPELINE_ORCHESTRATOR_ADDRESS)
+        hook_addr = hook_address or config.get("commerce_hook", COMMERCE_HOOK_ADDRESS)
+        apolicy_addr = agent_policy_address or config.get("agent_policy", AGENT_POLICY_ADDRESS)
+
+        self.orchestrator = None
+        self.hook = None
+        self.agent_policy = None
+
+        if orch_addr:
+            self.orchestrator = self.w3.eth.contract(
+                address=Web3.to_checksum_address(orch_addr),
+                abi=PIPELINE_ORCHESTRATOR_ABI,
+            )
+        if hook_addr:
+            self.hook = self.w3.eth.contract(
+                address=Web3.to_checksum_address(hook_addr),
+                abi=COMMERCE_HOOK_ABI,
+            )
+        if apolicy_addr:
+            self.agent_policy = self.w3.eth.contract(
+                address=Web3.to_checksum_address(apolicy_addr),
+                abi=AGENT_POLICY_ABI,
+            )
 
         self._nonce = None  # Client-side nonce tracker
 
@@ -473,3 +511,130 @@ class ArcCommerce:
             task_description=task_description,
         )
         return cheapest, agreement_id
+
+    # ── Pipeline methods (v3) ──
+
+    def _require_orchestrator(self):
+        if not self.orchestrator:
+            raise ValueError("PipelineOrchestrator address not configured. Pass orchestrator_address or deploy v3 contracts.")
+
+    def _require_hook(self):
+        if not self.hook:
+            raise ValueError("CommerceHook address not configured. Pass hook_address or deploy v3 contracts.")
+
+    def create_pipeline(
+        self,
+        client_agent_id: int,
+        stages: list[dict],
+        currency: str = "USDC",
+        deadline_hours: float = 24,
+        auto_approve_usdc: bool = True,
+    ) -> int:
+        """Create a multi-stage pipeline.
+
+        stages: list of {"provider_agent_id": int, "provider_address": str,
+                         "capability": str, "budget_usdc": float}
+        Returns the pipeline ID.
+        """
+        self._require_orchestrator()
+        currency_addr = self._resolve_currency(currency)
+        deadline = int(time.time() + deadline_hours * 3600)
+
+        stage_params = []
+        total = 0
+        for s in stages:
+            budget = int(s["budget_usdc"] * 1_000_000)
+            total += budget
+            stage_params.append((
+                s["provider_agent_id"],
+                Web3.to_checksum_address(s["provider_address"]),
+                Web3.keccak(text=s["capability"]),
+                budget,
+            ))
+
+        if auto_approve_usdc:
+            allowance = self.usdc.functions.allowance(
+                self.account.address, self.orchestrator.address
+            ).call()
+            if allowance < total:
+                self._send_tx(self.usdc.functions.approve(self.orchestrator.address, total))
+
+        receipt = self._send_tx(
+            self.orchestrator.functions.createPipeline(
+                client_agent_id, stage_params, currency_addr, deadline
+            )
+        )
+        logs = self.orchestrator.events.PipelineCreated().process_receipt(receipt)
+        return logs[0]["args"]["pipelineId"] if logs else -1
+
+    def cancel_pipeline(self, pipeline_id: int) -> dict:
+        """Cancel a pipeline and refund remaining budget."""
+        self._require_orchestrator()
+        return self._send_tx(self.orchestrator.functions.cancelPipeline(pipeline_id))
+
+    def approve_stage(self, job_id: int) -> dict:
+        """Approve a completed stage via the commerce hook."""
+        self._require_hook()
+        return self._send_tx(self.hook.functions.approveStage(job_id))
+
+    def reject_stage(self, job_id: int, reason: str = "rejected") -> dict:
+        """Reject a stage via the commerce hook."""
+        self._require_hook()
+        reason_hash = Web3.keccak(text=reason)
+        return self._send_tx(self.hook.functions.rejectStage(job_id, reason_hash))
+
+    def set_auto_approve(self, pipeline_id: int, enabled: bool = True) -> dict:
+        """Enable or disable auto-approval for pipeline stages."""
+        self._require_hook()
+        return self._send_tx(self.hook.functions.setAutoApprove(pipeline_id, enabled))
+
+    def get_pipeline(self, pipeline_id: int) -> Pipeline:
+        """Get pipeline details by ID."""
+        self._require_orchestrator()
+        raw = self._retry(lambda: self.orchestrator.functions.pipelines(pipeline_id).call())
+        return Pipeline(
+            pipeline_id=pipeline_id,
+            client_agent_id=raw[0],
+            client=raw[1],
+            currency=raw[2],
+            total_budget=raw[3],
+            total_spent=raw[4],
+            current_stage=raw[5],
+            stage_count=raw[6],
+            status=PipelineStatus(raw[7]),
+            created_at=raw[8],
+            deadline=raw[9],
+        )
+
+    def get_stages(self, pipeline_id: int) -> list[Stage]:
+        """Get all stages for a pipeline."""
+        self._require_orchestrator()
+        raw = self._retry(lambda: self.orchestrator.functions.getStages(pipeline_id).call())
+        return [Stage(
+            provider_agent_id=s[0],
+            provider_address=s[1],
+            capability_hash=s[2],
+            budget=s[3],
+            job_id=s[4],
+            status=StageStatus(s[5]),
+        ) for s in raw]
+
+    def get_client_pipelines(self, address: str = None) -> list[Pipeline]:
+        """Get all pipelines where address is the client."""
+        self._require_orchestrator()
+        addr = Web3.to_checksum_address(address or self.account.address)
+        ids = self._retry(lambda: self.orchestrator.functions.getClientPipelines(addr).call())
+        return [self.get_pipeline(pid) for pid in ids]
+
+    def _resolve_currency(self, currency: str) -> str:
+        """Resolve currency name to address."""
+        if currency.startswith("0x"):
+            return Web3.to_checksum_address(currency)
+        mapping = {
+            "USDC": USDC_ADDRESS,
+            "EURC": EURC_ADDRESS,
+        }
+        addr = mapping.get(currency.upper())
+        if not addr:
+            raise ValueError(f"Unknown currency: {currency}. Use 'USDC', 'EURC', or a hex address.")
+        return Web3.to_checksum_address(addr)

@@ -7,6 +7,9 @@ SERVICE_MARKET_ABI = json.loads((_dir / "ServiceMarket.json").read_text())
 SERVICE_ESCROW_ABI = json.loads((_dir / "ServiceEscrow.json").read_text())
 SPENDING_POLICY_ABI = json.loads((_dir / "spending_policy.json").read_text())
 IDENTITY_REGISTRY_ABI = json.loads((_dir / "identity_registry.json").read_text())
+PIPELINE_ORCHESTRATOR_ABI = json.loads((_dir / "PipelineOrchestrator.json").read_text())
+COMMERCE_HOOK_ABI = json.loads((_dir / "CommerceHook.json").read_text())
+AGENT_POLICY_ABI = json.loads((_dir / "AgentPolicy.json").read_text())
 
 ERC20_ABI = [
     {

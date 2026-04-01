@@ -11,6 +11,17 @@ SPENDING_POLICY_ADDRESS = "0x072bFf95A62Ef1109dBE0122f734D6bC649E2634"
 IDENTITY_REGISTRY_ADDRESS = "0x8004A818BFB912233c491871b3d84c89A494BD9e"
 REPUTATION_REGISTRY_ADDRESS = "0x8004B663056A597Dffe9eCcC1965A193B7388713"
 
+# V3 contracts (fill after deployment)
+PIPELINE_ORCHESTRATOR_ADDRESS = ""
+COMMERCE_HOOK_ADDRESS = ""
+AGENT_POLICY_ADDRESS = ""
+
+# ERC-8183 (Arc native)
+AGENTIC_COMMERCE_ADDRESS = "0x0747EEf0706327138c69792bF28Cd525089e4583"
+
+# Additional tokens
+EURC_ADDRESS = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a"
+
 # Network configurations
 NETWORKS = {
     "testnet": {
@@ -22,6 +33,11 @@ NETWORKS = {
         "service_market": "0x046e44E2DE09D2892eCeC4200bB3ecD298892f88",
         "service_escrow": "0x365889e057a3ddABADB542e19f8199650B4df4Cf",
         "spending_policy": "0x072bFf95A62Ef1109dBE0122f734D6bC649E2634",
+        "pipeline_orchestrator": "",
+        "commerce_hook": "",
+        "agent_policy": "",
+        "agentic_commerce": "0x0747EEf0706327138c69792bF28Cd525089e4583",
+        "eurc": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
     },
 }
 

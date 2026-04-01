@@ -41,3 +41,50 @@ class Agreement:
     @property
     def amount_usdc(self) -> float:
         return self.amount / 1_000_000
+
+
+class StageStatus(IntEnum):
+    PENDING = 0
+    ACTIVE = 1
+    COMPLETED = 2
+    FAILED = 3
+
+
+class PipelineStatus(IntEnum):
+    ACTIVE = 0
+    COMPLETED = 1
+    HALTED = 2
+    CANCELLED = 3
+
+
+@dataclass
+class Stage:
+    provider_agent_id: int
+    provider_address: str
+    capability_hash: bytes
+    budget: int
+    job_id: int
+    status: StageStatus
+
+    @property
+    def budget_usdc(self) -> float:
+        return self.budget / 1e6
+
+
+@dataclass
+class Pipeline:
+    pipeline_id: int
+    client_agent_id: int
+    client: str
+    currency: str
+    total_budget: int
+    total_spent: int
+    current_stage: int
+    stage_count: int
+    status: PipelineStatus
+    created_at: int
+    deadline: int
+
+    @property
+    def total_budget_usdc(self) -> float:
+        return self.total_budget / 1e6

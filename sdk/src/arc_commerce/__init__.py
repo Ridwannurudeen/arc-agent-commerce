@@ -1,6 +1,9 @@
 from arc_commerce.client import ArcCommerce
 from arc_commerce.async_client import AsyncArcCommerce
-from arc_commerce.types import Service, Agreement, AgreementStatus
+from arc_commerce.types import (
+    Service, Agreement, AgreementStatus,
+    Stage, Pipeline, StageStatus, PipelineStatus,
+)
 from arc_commerce.errors import (
     ArcCommerceError,
     TransactionRevertedError,
@@ -16,6 +19,10 @@ __all__ = [
     "Service",
     "Agreement",
     "AgreementStatus",
+    "Stage",
+    "Pipeline",
+    "StageStatus",
+    "PipelineStatus",
     "ArcCommerceError",
     "TransactionRevertedError",
     "TransactionTimeoutError",
