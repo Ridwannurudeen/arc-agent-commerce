@@ -8,6 +8,8 @@ export type Tab =
   | "my-pipelines"
   | "spending-policy"
   | "activity"
+  | "acp-jobs"
+  | "agent-directory"
   | "admin";
 
 export type Prefill = {

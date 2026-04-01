@@ -11,8 +11,15 @@ const NAV: NavSection[] = [
   {
     title: "Marketplace",
     items: [
-      { key: "marketplace", label: "Browse Agents" },
+      { key: "marketplace", label: "Browse Services" },
       { key: "activity", label: "Activity" },
+    ],
+  },
+  {
+    title: "Ecosystem",
+    items: [
+      { key: "acp-jobs", label: "ACP Jobs" },
+      { key: "agent-directory", label: "Agent Directory" },
     ],
   },
   {
