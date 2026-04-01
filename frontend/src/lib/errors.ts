@@ -1,4 +1,5 @@
 const REVERT_REASONS: Record<string, string> = {
+  // V1/V2
   NotAgentOwner: "You don't own this agent",
   ZeroPrice: "Price must be greater than zero",
   InvalidAmount: "Amount must be greater than zero",
@@ -16,6 +17,20 @@ const REVERT_REASONS: Record<string, string> = {
   InsufficientBalance: "Insufficient USDC balance",
   FeeTooHigh: "Fee exceeds maximum (100 bps)",
   ZeroAddress: "Address cannot be zero",
+  // V3 Pipeline
+  NoStages: "Pipeline must have at least one stage",
+  DeadlineInPast: "Deadline must be in the future",
+  PipelineNotActive: "Pipeline is not active",
+  WrongStage: "Cannot operate on this stage",
+  UnsupportedCurrency: "This currency is not supported",
+  NotCommerceHook: "Only the commerce hook can call this",
+  NotPipelineClient: "Only the pipeline client can call this",
+  OnlyOrchestrator: "Only the orchestrator can call this",
+  OnlyACP: "Only the ACP contract can call this",
+  JobNotRegistered: "This job is not registered in the pipeline",
+  JobNotSubmitted: "Job must be in submitted status",
+  HookNotWhitelisted: "Hook is not whitelisted on ACP",
+  Unauthorized: "Not authorized to perform this action",
 };
 
 export function parseContractError(error: unknown): string {

@@ -1,16 +1,14 @@
 export type Tab =
-  | "dashboard"
-  | "services"
-  | "agreements"
-  | "list-service"
-  | "create-agreement"
-  | "activity"
-  | "spending-policy"
+  | "marketplace"
+  | "agent-profile"
+  | "register-agent"
   | "my-services"
-  | "admin"
-  | "discover"
+  | "incoming-jobs"
   | "create-pipeline"
-  | "my-pipelines";
+  | "my-pipelines"
+  | "spending-policy"
+  | "activity"
+  | "admin";
 
 export type Prefill = {
   provider: string;
@@ -45,4 +43,38 @@ export type PolicyData = {
   dailySpent: bigint;
   dayStart: bigint;
   exists: boolean;
+};
+
+export type PipelineData = {
+  clientAgentId: bigint;
+  client: string;
+  currency: string;
+  totalBudget: bigint;
+  totalSpent: bigint;
+  currentStage: bigint;
+  stageCount: bigint;
+  status: number; // 0=Active, 1=Completed, 2=Halted, 3=Cancelled
+  createdAt: bigint;
+  deadline: bigint;
+};
+
+export type StageData = {
+  providerAgentId: bigint;
+  providerAddress: string;
+  capabilityHash: string;
+  budget: bigint;
+  jobId: bigint;
+  status: number; // 0=Pending, 1=Active, 2=Completed, 3=Failed
+};
+
+export type JobData = {
+  id: bigint;
+  client: string;
+  provider: string;
+  evaluator: string;
+  description: string;
+  budget: bigint;
+  expiredAt: bigint;
+  status: number; // 0=Open, 1=Funded, 2=Submitted, 3=Completed, 4=Rejected, 5=Expired
+  hook: string;
 };
