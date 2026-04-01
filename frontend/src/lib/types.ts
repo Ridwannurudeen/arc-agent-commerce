@@ -7,7 +7,10 @@ export type Tab =
   | "activity"
   | "spending-policy"
   | "my-services"
-  | "admin";
+  | "admin"
+  | "discover"
+  | "create-pipeline"
+  | "my-pipelines";
 
 export type Prefill = {
   provider: string;

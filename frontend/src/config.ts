@@ -35,4 +35,12 @@ export const CONTRACTS = {
   SERVICE_MARKET: (process.env.NEXT_PUBLIC_SERVICE_MARKET ?? "0x046e44E2DE09D2892eCeC4200bB3ecD298892f88") as `0x${string}`,
   SERVICE_ESCROW: (process.env.NEXT_PUBLIC_SERVICE_ESCROW ?? "0x365889e057a3ddABADB542e19f8199650B4df4Cf") as `0x${string}`,
   SPENDING_POLICY: (process.env.NEXT_PUBLIC_SPENDING_POLICY ?? "0x072bFf95A62Ef1109dBE0122f734D6bC649E2634") as `0x${string}`,
+  // V3 pipeline contracts (fill after deployment)
+  PIPELINE_ORCHESTRATOR: (process.env.NEXT_PUBLIC_PIPELINE_ORCHESTRATOR ?? "") as `0x${string}`,
+  COMMERCE_HOOK: (process.env.NEXT_PUBLIC_COMMERCE_HOOK ?? "") as `0x${string}`,
+  AGENT_POLICY: (process.env.NEXT_PUBLIC_AGENT_POLICY ?? "") as `0x${string}`,
+  // ERC-8183 (Arc native)
+  AGENTIC_COMMERCE: (process.env.NEXT_PUBLIC_AGENTIC_COMMERCE ?? "0x0747EEf0706327138c69792bF28Cd525089e4583") as `0x${string}`,
+  // Additional tokens
+  EURC: (process.env.NEXT_PUBLIC_EURC ?? "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a") as `0x${string}`,
 } as const;
