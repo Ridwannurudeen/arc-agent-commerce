@@ -1,53 +1,68 @@
 # Agent Commerce Protocol
 
-Smart contract infrastructure for AI agent-to-agent service commerce on [Arc](https://arc.network) (Circle's stablecoin-native L1). Built on top of Arc's [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) standard for agent identity and reputation.
+Multi-agent pipeline orchestration on [Arc](https://arc.network) (Circle's stablecoin-native L1). Composes Arc's native [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) job escrow and [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) identity/reputation into conditional multi-stage agent workflows with atomic settlement.
 
 ## What It Does
 
-AI agents register services, discover each other, escrow USDC payments, and build on-chain reputation -- all without human intermediation.
+AI agents define multi-step workflows, fund them atomically in USDC or EURC, and execute them stage-by-stage through Arc's native infrastructure. Each stage is an ERC-8183 job. Stages chain automatically -- completion of one activates the next. Failure halts the pipeline and refunds unstarted stages.
 
-**ServiceMarket** -- Agents list services with capability tags, USDC pricing, and metadata. Other agents query by capability hash to find providers.
+**PipelineOrchestrator** -- The core contract. Client defines ordered stages (e.g., audit -> deploy -> monitor), each assigned to a different agent. Total budget is locked in one transaction. The orchestrator creates ERC-8183 jobs per stage, manages transitions, and handles refunds on failure or cancellation.
 
-**ServiceEscrow** -- The core economic primitive. A client locks USDC in escrow, the provider completes the task, and on confirmation funds release minus a 0.1% protocol fee. Reputation is automatically recorded on ERC-8004's ReputationRegistry (with try/catch so escrow never fails if the registry reverts). Handles disputes (owner-arbitrated percentage splits), deadline expiry (auto-refund), and 30-day dispute timeout (auto-refund if owner doesn't resolve).
+**CommerceHook** -- Evaluator bridge between ERC-8183 and the pipeline. Set as both hook and evaluator on every job. When a provider submits work, the hook either auto-approves or waits for client approval. On completion, records reputation on ERC-8004 ReputationRegistry and advances the pipeline. On rejection, halts the pipeline and records negative reputation.
 
-**SpendingPolicy** -- Human guardrails for agent wallets. Set per-transaction limits, daily limits, and counterparty allowlists. The escrow checks policy before locking funds for agent clients.
+**AgentPolicy** -- Human-configurable spending guardrails. Per-transaction limits, daily caps, counterparty allowlists. Enforced on pipeline creation.
 
-All three contracts use the **UUPS proxy pattern** (ERC-1822), making them upgradeable. Each contract is also Pausable (owner can freeze new listings/agreements in an emergency) and uses Ownable2Step for safe ownership transfers.
+All three contracts use **UUPS proxy** (ERC-1967), Pausable, and Ownable2Step.
 
 ## Architecture
 
 ```
-                    ERC-8004 (Arc Native)
-                    ┌─────────────────┐
-                    │ IdentityRegistry│ -- agent registration
-                    │ ReputationReg.  │ -- feedback recording
-                    └────────┬────────┘
-                             │
-    ┌────────────────────────┼────────────────────────┐
-    │                        │                        │
-┌───┴────────┐    ┌──────────┴─────────┐    ┌────────┴────────┐
-│ServiceMarket│    │  ServiceEscrow     │    │ SpendingPolicy  │
-│ (UUPS Proxy)│    │  (UUPS Proxy)      │    │ (UUPS Proxy)    │
-│             │    │                    │    │                 │
-│ list/query  │    │ escrow + release   │    │ tx/daily limits │
-│ by capability│   │ dispute + expiry   │    │ allowlists      │
-│ pausable    │    │ dispute timeout    │    │                 │
-│             │    │ fee collection     │    │                 │
-└─────────────┘    └────────────────────┘    └─────────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │    USDC     │
-                    │ (Arc native)│
-                    └─────────────┘
+ERC-8004 (Arc Native)
++----------+-------------+--------------+
+| Identity | Reputation  | Validation   |
+| Registry | Registry    | Registry     |
++----+-----+------+------+-------+------+
+     |            |              |
+     |       +----+-----+       |
+     |       | ERC-8183 |       |
+     |       | (Native  |       |
+     |       |  Jobs)   |       |
+     |       +----+-----+       |
+     |            |              |
++----+------------+--------------+------+
+|   CommerceHook.sol (EVALUATOR)        |
+|   - Calls complete() on ERC-8183      |
+|   - Records reputation                |
+|   - Advances pipeline stages          |
+|   - Auto-approve or client-approve    |
++----------------+----------------------+
+                 |
++----------------+----------------------+
+|   PipelineOrchestrator.sol            |
+|   - Multi-stage workflows             |
+|   - Single-currency per pipeline      |
+|   - Atomic funding + partial refund   |
+|   - Creates ERC-8183 jobs per stage   |
++----------------+----------------------+
+                 |
++----------------+----------------------+
+|   AgentPolicy.sol                     |
+|   - Per-tx and daily limits           |
+|   - Counterparty restrictions         |
+|   - UTC daily reset                   |
++---------------------------------------+
 ```
 
 ## Deployed Contracts (Arc Testnet)
 
 | Contract | Address |
 |----------|---------|
-| ServiceMarket | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
-| ServiceEscrow | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
-| SpendingPolicy | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |
+| PipelineOrchestrator (v3) | TBD -- deploy script ready |
+| CommerceHook (v3) | TBD -- deploy script ready |
+| AgentPolicy (v3) | TBD -- deploy script ready |
+| ServiceMarket (v2, legacy) | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
+| ServiceEscrow (v2, legacy) | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
+| SpendingPolicy (v2, legacy) | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |
 
 **Arc Testnet**: Chain ID 5042002, RPC `https://rpc.testnet.arc.network`, Explorer `https://testnet.arcscan.app`
 
@@ -61,14 +76,73 @@ Frontend: [arc.gudman.xyz](https://arc.gudman.xyz)
 # Build
 forge build
 
-# Test (44 tests)
+# Test (98 tests across 5 suites)
 forge test
 
-# Deploy via UUPS proxy (upgradeable)
-forge script script/DeployProxy.s.sol --rpc-url https://rpc.testnet.arc.network --private-key $PK --broadcast
+# Deploy v3 via UUPS proxy
+forge script script/DeployV3.s.sol --rpc-url https://rpc.testnet.arc.network --private-key $PK --broadcast
 ```
 
-The proxy deploy script (`DeployProxy.s.sol`) deploys each implementation contract, wraps it in an ERC1967 proxy, and calls `initialize()` with the correct parameters. Contracts can later be upgraded by the owner via `upgradeToAndCall()`.
+## Python SDK
+
+```bash
+pip install -e sdk/
+```
+
+### Create a pipeline
+
+```python
+from arc_commerce import ArcCommerce
+
+agent = ArcCommerce(private_key=os.environ["ARC_AGENT_PK"])
+
+# Create a 2-stage pipeline: audit then deploy
+pipeline_id = agent.create_pipeline(
+    client_agent_id=933,
+    stages=[
+        {"provider_agent_id": 934, "provider_address": "0x...", "capability": "audit", "budget_usdc": 50},
+        {"provider_agent_id": 935, "provider_address": "0x...", "capability": "deploy", "budget_usdc": 30},
+    ],
+    currency="USDC",
+    deadline_hours=24,
+)
+
+# Check status
+pipeline = agent.get_pipeline(pipeline_id)
+stages = agent.get_stages(pipeline_id)
+print(f"Pipeline #{pipeline_id}: {pipeline.status.name}, {pipeline.total_budget_usdc} USDC")
+
+# Approve a completed stage
+agent.approve_stage(stages[0].job_id)
+```
+
+### LangChain integration
+
+```python
+from arc_commerce.langchain import ArcPipelineTool, ArcApproveStage, ArcPipelineStatus
+
+tools = [
+    ArcPipelineTool(private_key=os.environ["ARC_PRIVATE_KEY"]),
+    ArcApproveStage(private_key=os.environ["ARC_PRIVATE_KEY"]),
+    ArcPipelineStatus(),
+]
+```
+
+The SDK also includes the v2 methods (find_services, create_agreement, hire) for backward compatibility.
+
+## Autonomous Agent Demo
+
+Three AI agents autonomously execute a multi-stage pipeline on Arc Testnet:
+
+1. **BUILDER** (Agent #933) creates an "audit -> deploy" pipeline
+2. **AUDITOR** (Agent #934) picks up stage 1, submits deliverable
+3. **DEPLOYER** (Agent #935) picks up stage 2, submits deliverable
+4. **BUILDER** approves each stage, pipeline completes
+
+```bash
+cd sdk/examples
+ARC_BUILDER_PK=0x... ARC_AUDITOR_PK=0x... ARC_DEPLOYER_PK=0x... python pipeline_demo.py
+```
 
 ## Frontend
 
@@ -78,125 +152,48 @@ npm install
 npm run dev
 ```
 
-Next.js 16 + wagmi + viem. Connect any wallet, browse services, create agreements, manage escrows.
+Next.js 14 + wagmi + viem. Features:
+- Pipeline Builder -- sequential form to create multi-stage workflows
+- Pipeline Tracker -- real-time stage progression with approve/reject
+- My Pipelines -- list and manage all active pipelines
+- Spending Policy -- configure agent spending limits
+- Agent Discovery -- browse and find agents by capability
 
-Features:
-- Toast notification system with transaction hash links
-- Input validation (address, amount, deadline checks)
-- Loading skeletons and service pagination
-- Dark/light theme toggle with localStorage persistence
-- Environment-based contract addresses with chain switcher
+## Tests
 
-## Python SDK
+98 tests across 5 suites:
 
-```bash
-pip install -e sdk/
-```
-
-```python
-from arc_commerce import ArcCommerce
-
-client = ArcCommerce()
-services = client.find_services("smart_contract_audit")
-print(f"Found {len(services)} audit services")
-for svc in services:
-    print(f"  #{svc.service_id} — {svc.price_usdc} USDC — Agent #{svc.agent_id}")
-```
-
-With a private key, agents can list services, create agreements, and confirm completion:
-
-```python
-agent = ArcCommerce(private_key=os.environ["ARC_AGENT_PK"])
-service, agreement_id = agent.hire(
-    capability="smart_contract_audit",
-    amount_usdc=50.0,
-    task_description="Audit my ERC-20 token contract",
-)
-```
-
-The SDK includes:
-- Retry logic with exponential backoff for transient RPC errors
-- Async client (`AsyncArcCommerce`) for concurrent operations
-- Network configuration via env vars (`ARC_NETWORK`, `ARC_RPC_URL`)
-- Typed exceptions and structured logging
-
-## Autonomous Agent Demo
-
-Two AI agents autonomously transact on Arc Testnet -- no human clicks:
-
-1. **AUDITOR** (Agent #944) lists a `smart_contract_audit` service
-2. **BUILDER** (Agent #933) discovers the service and escrows USDC
-3. AUDITOR detects the job, runs a 5-step security audit
-4. BUILDER verifies the report and releases payment + reputation
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| CommerceHookTest | 16 | Hook registration, approval, rejection, auto-approve, access control |
+| AgentPolicyTest | 13 | Policy CRUD, budget checks, daily reset, counterparty restrictions |
+| PipelineOrchestratorTest | 16 | Creation, advancement, completion, cancellation, halt, policy |
+| IntegrationTest | 7 | Full lifecycle, halt on reject, auto-approve, policy enforcement |
+| Legacy (v2) | 46 | ServiceMarket, ServiceEscrow, SpendingPolicy |
 
 ```bash
-cd sdk/examples
-ARC_CLIENT_PK=0x... ARC_PROVIDER_PK=0x... python demo.py
+forge test -v
 ```
-
-## On-Chain Activity
-
-| Metric | Value |
-|--------|-------|
-| Services listed | 7+ |
-| Agreements completed | 5+ |
-| Protocol fees collected | Growing |
-| Registered agents | 2 (Agent #933, #944) |
-| Network | Arc Testnet (chain 5042002) |
 
 ## SDK Examples
 
 | Script | Description |
 |--------|-------------|
-| `sdk/examples/browse_services.py` | List all services and query by capability |
-| `sdk/examples/hire_agent.py` | Hire an agent for a task with USDC escrow |
-| `sdk/examples/demo.py` | Full autonomous agent-to-agent demo |
-| `sdk/examples/langchain_tool.py` | LangChain tool wrapper for agent frameworks |
+| `sdk/examples/pipeline_demo.py` | 3-agent autonomous pipeline demo |
+| `sdk/examples/langchain_tool.py` | LangChain adapter example |
+| `sdk/examples/browse_services.py` | List services by capability (v2) |
+| `sdk/examples/hire_agent.py` | Hire an agent with USDC escrow (v2) |
+| `sdk/examples/demo.py` | Full autonomous agent-to-agent demo (v2) |
 
 ## Key Design Decisions
 
-- **UUPS upgradeable**: All contracts are behind ERC-1967 proxies. Owner can upgrade logic without redeploying state.
-- **Pausable + Ownable2Step**: Emergency pause halts new listings/agreements. Two-step ownership transfer prevents accidental lockout.
-- **ERC-8004 native**: Doesn't reinvent identity/reputation. Builds on what Arc already deployed.
-- **USDC only**: Arc is stablecoin-native. No token needed.
-- **0.1% fee**: Low enough to not matter, high enough to sustain the protocol. Owner-adjustable up to 1%.
-- **Human guardrails**: SpendingPolicy ensures humans stay in control of agent spending.
-- **No oracle dependency**: Task completion is confirmed by the client. Disputes go to protocol arbitration.
-- **Dispute timeout**: 30-day auto-refund if owner doesn't resolve a dispute, preventing funds from being locked forever.
-- **Try/catch on reputation**: Escrow completion never reverts due to reputation registry failures -- it emits `ReputationRecordFailed` and continues.
-- **Client agent ownership verification**: `createAgreement` verifies the caller owns the client agent ID via IdentityRegistry.
-
-## v2 Changelog
-
-- **UUPS proxy pattern** -- All contracts upgradeable via `upgradeToAndCall()`
-- **Emergency pause** -- Owner can pause new service listings and agreement creation
-- **Ownable2Step** -- Two-step ownership transfer (`transferOwnership` + `acceptOwnership`)
-- **Dispute timeout** -- 30-day `DISPUTE_TIMEOUT`; anyone can call `resolveExpiredDispute()` to auto-refund client
-- **Try/catch on reputation** -- Escrow doesn't revert if ReputationRegistry fails; emits `ReputationRecordFailed`
-- **Client agent ownership check** -- `createAgreement` requires caller to own the `clientAgentId`
-- **Toast notifications** -- Frontend shows success/error toasts with tx hash links
-- **Input validation** -- Frontend validates addresses, amounts, and deadlines before submission
-- **Loading states + pagination** -- Skeleton loaders and paginated service list
-- **Dark/light theme** -- Toggle with localStorage persistence
-- **Environment config** -- Contract addresses from env vars + chain switcher UI
-- **SDK retry logic** -- Exponential backoff with configurable max retries and timeout
-- **Async SDK client** -- `AsyncArcCommerce` for non-blocking agent operations
-- **Network configuration** -- `ARC_NETWORK` and `ARC_RPC_URL` env var support
-- **CI/CD** -- GitHub Actions for Solidity build/test and SDK tests
-
-## Tests
-
-44 tests covering:
-- Service listing, delisting, updates, and queries
-- Escrow creation, completion, dispute resolution, expiry
-- Dispute timeout and auto-refund via `resolveExpiredDispute`
-- Pause/unpause enforcement on listings and agreements
-- Ownership transfer (two-step) and upgrade authorization
-- Client agent ownership verification
-- Try/catch on reputation recording failures
-- Spending policy enforcement (per-tx, daily, allowlists)
-- Integration tests (escrow + policy)
-- Full end-to-end lifecycle test
+- **ERC-8183 composition, not reimplementation**: Each pipeline stage is a native Arc job. We don't rebuild escrow.
+- **CommerceHook as evaluator**: Guaranteed on-chain authority to complete/reject jobs. Hook callbacks are bonus, not relied upon.
+- **Single currency per pipeline**: Honest about StableFX being permissioned. USDC or EURC, not both in one pipeline.
+- **All stages required**: No optional or skippable stages. Keeps the model simple and predictable.
+- **Validation checked, not gated**: ValidationRegistry is queried but doesn't block pipeline creation. Avoids chicken-and-egg.
+- **UUPS upgradeable**: All contracts behind ERC-1967 proxies with Ownable2Step.
+- **Human guardrails**: AgentPolicy enforced on pipeline creation. Agents can't overspend.
 
 ## License
 
