@@ -7,7 +7,8 @@ import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
-import { capabilityName, STAGE_STATUS } from "@/lib/constants";
+import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
+import { capabilityName, STAGE_STATUS, JOB_STATUS } from "@/lib/constants";
 import type { ServiceData } from "@/lib/types";
 
 type Props = {
@@ -153,6 +154,89 @@ function AgentReputation({ agentId }: { agentId: number }) {
   );
 }
 
+function AgentAcpHistory({ ownerAddr }: { ownerAddr: string }) {
+  const { data: jobCounterRaw } = useReadContract({
+    address: CONTRACTS.AGENTIC_COMMERCE,
+    abi: AgenticCommerceABI as any,
+    functionName: "jobCounter",
+    chainId: arcTestnet.id,
+  });
+
+  const jobCounter = Number(jobCounterRaw ?? 0);
+
+  const { data: jobsRaw, isLoading } = useReadContracts({
+    contracts: Array.from({ length: jobCounter }, (_, i) => ({
+      address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
+      abi: AgenticCommerceABI as any,
+      functionName: "getJob",
+      args: [BigInt(i + 1)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: jobCounter > 0 },
+  });
+
+  const jobs = useMemo(() => {
+    if (!jobsRaw) return [];
+    const ownerLower = ownerAddr.toLowerCase();
+    return jobsRaw
+      .map((r, i) => {
+        if (r.status !== "success" || !r.result) return null;
+        const j = r.result as any;
+        const client = (j.client ?? j[1] ?? "").toLowerCase();
+        const provider = (j.provider ?? j[2] ?? "").toLowerCase();
+        if (client !== ownerLower && provider !== ownerLower) return null;
+        return {
+          id: i + 1,
+          role: client === ownerLower ? "Client" : "Provider",
+          description: j.description ?? j[4] ?? "",
+          budget: BigInt(j.budget ?? j[5] ?? 0),
+          status: Number(j.status ?? j[7] ?? 0),
+        };
+      })
+      .filter((j): j is NonNullable<typeof j> => j !== null)
+      .reverse();
+  }, [jobsRaw, ownerAddr]);
+
+  if (isLoading) return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Loading...</div>;
+
+  if (jobs.length === 0) {
+    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>No ACP jobs found for this owner.</div>;
+  }
+
+  const addr = (s: string) => s.length > 30 ? `${s.slice(0, 28)}...` : s;
+
+  return (
+    <div style={{ display: "grid", gap: "0.5rem" }}>
+      {jobs.map((j) => (
+        <div
+          key={j.id}
+          style={{
+            padding: "0.6rem 0.75rem",
+            background: "var(--bg)",
+            borderRadius: "6px",
+            border: "1px solid var(--border)",
+            fontSize: "0.85rem",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+            <span style={{ fontWeight: 600 }}>Job #{j.id}</span>
+            <span style={{ display: "flex", gap: "0.5rem" }}>
+              <span className={`status ${JOB_STATUS[j.status]?.toLowerCase() ?? "active"}`}>
+                {JOB_STATUS[j.status] ?? "Unknown"}
+              </span>
+              <span style={{ color: "var(--accent)", fontSize: "0.75rem" }}>{j.role}</span>
+            </span>
+          </div>
+          <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginBottom: "0.25rem" }}>
+            {addr(j.description || "No description")}
+          </div>
+          <div style={{ fontSize: "0.8rem" }}>Budget: {formatUnits(j.budget, 6)} USDC</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AgentProfileModal({ agentId, onClose, onHire }: Props) {
   const { data: ownerAddr } = useReadContract({
     address: CONTRACTS.IDENTITY_REGISTRY,
@@ -201,6 +285,15 @@ export function AgentProfileModal({ agentId, onClose, onHire }: Props) {
         <div className="profile-section">
           <h4>Reputation</h4>
           <AgentReputation agentId={agentId} />
+        </div>
+
+        <div className="profile-section">
+          <h4>ACP Job History</h4>
+          {ownerAddr ? (
+            <AgentAcpHistory ownerAddr={ownerAddr as string} />
+          ) : (
+            <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Loading owner...</div>
+          )}
         </div>
       </div>
     </div>

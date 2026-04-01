@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Header } from "@/components/Header";
+import { NetworkBanner } from "@/components/NetworkBanner";
 import { Sidebar } from "@/components/Sidebar";
 import { Marketplace } from "@/components/Marketplace";
 import { RegisterAgent } from "@/components/RegisterAgent";
@@ -40,6 +41,7 @@ export default function Home() {
   return (
     <>
       <Header />
+      <NetworkBanner />
       <div className="app-layout">
         <Sidebar activeTab={tab} onNavigate={setTab} />
         <main className="main-content">

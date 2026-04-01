@@ -4,11 +4,13 @@ export const CAPABILITY_NAMES: [string, string][] = [
   ["smart_contract_audit", "Smart Contract Audit"],
   ["code_review", "Code Review"],
   ["deployment", "Deployment"],
+  ["contract_deployment", "Contract Deployment"],
   ["monitoring", "Monitoring"],
   ["data_analysis", "Data Analysis"],
   ["price_monitoring", "Price Monitoring"],
   ["security_audit", "Security Audit"],
   ["testing", "Testing"],
+  ["consulting", "Consulting"],
 ];
 
 export const KNOWN_CAPABILITIES = Object.fromEntries(

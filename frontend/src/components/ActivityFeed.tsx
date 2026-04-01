@@ -6,7 +6,8 @@ import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceEscrowABI from "@/abi/ServiceEscrow.json";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
-import { STATUS_LABELS, PIPELINE_STATUS } from "@/lib/constants";
+import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
+import { STATUS_LABELS, PIPELINE_STATUS, JOB_STATUS } from "@/lib/constants";
 import type { AgreementData } from "@/lib/types";
 
 type Props = {
@@ -58,9 +59,30 @@ export function ActivityFeed({ onViewAgent }: Props) {
     query: { enabled: pipCount > 0 },
   });
 
+  // ACP Jobs (ecosystem-wide)
+  const { data: jobCounterRaw } = useReadContract({
+    address: CONTRACTS.AGENTIC_COMMERCE,
+    abi: AgenticCommerceABI as any,
+    functionName: "jobCounter",
+    chainId: arcTestnet.id,
+  });
+
+  const jobCount = Number(jobCounterRaw ?? 0);
+
+  const { data: jobBatch } = useReadContracts({
+    contracts: Array.from({ length: jobCount }, (_, i) => ({
+      address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
+      abi: AgenticCommerceABI as any,
+      functionName: "getJob",
+      args: [BigInt(i + 1)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: jobCount > 0 },
+  });
+
   // Build unified activity list
   type ActivityItem = {
-    type: "agreement" | "pipeline";
+    type: "agreement" | "pipeline" | "acp-job";
     id: number;
     timestamp: bigint;
     data: any;
@@ -97,10 +119,30 @@ export function ActivityFeed({ onViewAgent }: Props) {
       });
     }
 
+    // ACP Jobs
+    if (jobBatch) {
+      jobBatch.forEach((r, i) => {
+        if (r.status !== "success" || !r.result) return;
+        const j = r.result as any;
+        list.push({
+          type: "acp-job",
+          id: i + 1,
+          timestamp: BigInt(j.expiredAt ?? j[6] ?? 0),
+          data: {
+            client: j.client ?? j[1] ?? "",
+            provider: j.provider ?? j[2] ?? "",
+            description: j.description ?? j[4] ?? "",
+            budget: BigInt(j.budget ?? j[5] ?? 0),
+            status: Number(j.status ?? j[7] ?? 0),
+          },
+        });
+      });
+    }
+
     // Sort by timestamp descending
     list.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
     return list;
-  }, [agrBatch, pipBatch]);
+  }, [agrBatch, pipBatch, jobBatch]);
 
   if (items.length === 0) {
     return <div className="empty">No protocol activity yet.</div>;
@@ -110,9 +152,44 @@ export function ActivityFeed({ onViewAgent }: Props) {
     <div>
       <h2 style={{ marginBottom: "0.5rem" }}>Activity</h2>
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
-        All on-chain activity (newest first)
+        All ecosystem activity — ACP jobs, pipelines, agreements (newest first)
       </div>
       {items.map((item) => {
+        if (item.type === "acp-job") {
+          const j = item.data;
+          const statusLabel = JOB_STATUS[j.status] ?? "Unknown";
+          const addr = (s: string) => `${s.slice(0, 6)}...${s.slice(-4)}`;
+          return (
+            <div key={`acp-${item.id}`} className="agreement-item">
+              <div className="row">
+                <span className="label">ACP Job #{item.id}</span>
+                <span className={`status ${statusLabel.toLowerCase() === "completed" ? "completed" : statusLabel.toLowerCase() === "open" ? "active" : "expired"}`}>
+                  {statusLabel}
+                </span>
+              </div>
+              {j.description && (
+                <div className="row">
+                  <span className="label">Task</span>
+                  <span style={{ fontSize: "0.85rem" }}>{j.description.length > 60 ? j.description.slice(0, 57) + "..." : j.description}</span>
+                </div>
+              )}
+              <div className="row">
+                <span className="label">Budget</span>
+                <span>{formatUnits(j.budget, 6)} USDC</span>
+              </div>
+              <div className="row">
+                <span className="label">Client</span>
+                <span>{addr(j.client)}</span>
+              </div>
+              {j.provider !== "0x0000000000000000000000000000000000000000" && (
+                <div className="row">
+                  <span className="label">Provider</span>
+                  <span>{addr(j.provider)}</span>
+                </div>
+              )}
+            </div>
+          );
+        }
         if (item.type === "pipeline") {
           const p = item.data;
           const statusLabel = PIPELINE_STATUS[p.status] ?? "Unknown";
