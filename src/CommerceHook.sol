@@ -72,12 +72,10 @@ contract CommerceHook is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     // ---- Initializer ----
 
-    function initialize(
-        address acp_,
-        address identityRegistry_,
-        address reputationRegistry_,
-        address owner_
-    ) external initializer {
+    function initialize(address acp_, address identityRegistry_, address reputationRegistry_, address owner_)
+        external
+        initializer
+    {
         __Ownable_init(owner_);
         __Ownable2Step_init();
 

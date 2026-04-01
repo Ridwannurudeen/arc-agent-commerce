@@ -90,10 +90,7 @@ contract AgentPolicy is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable 
     /// @param agent Agent address
     /// @param counterparty Counterparty address to allow or disallow
     /// @param allowed Whether the counterparty is allowed
-    function setAllowedCounterparty(address agent, address counterparty, bool allowed)
-        external
-        onlyPolicyOwner(agent)
-    {
+    function setAllowedCounterparty(address agent, address counterparty, bool allowed) external onlyPolicyOwner(agent) {
         allowedCounterparties[agent][counterparty] = allowed;
         emit CounterpartyAllowed(agent, counterparty, allowed);
     }

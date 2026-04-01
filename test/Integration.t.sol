@@ -24,8 +24,8 @@ contract IntegrationTest is Test {
     MockUSDC usdc;
 
     address deployer = makeAddr("deployer");
-    address alice = makeAddr("alice");     // client
-    address bob = makeAddr("bob");         // auditor / provider
+    address alice = makeAddr("alice"); // client
+    address bob = makeAddr("bob"); // auditor / provider
     address charlie = makeAddr("charlie"); // deployer / provider2
 
     uint256 aliceAgentId;
@@ -45,18 +45,14 @@ contract IntegrationTest is Test {
         CommerceHook hookImpl = new CommerceHook();
         ERC1967Proxy hookProxy = new ERC1967Proxy(
             address(hookImpl),
-            abi.encodeCall(
-                CommerceHook.initialize,
-                (address(acp), address(identity), address(reputation), deployer)
-            )
+            abi.encodeCall(CommerceHook.initialize, (address(acp), address(identity), address(reputation), deployer))
         );
         hook = CommerceHook(address(hookProxy));
 
         // Deploy AgentPolicy via UUPS proxy
         AgentPolicy policyImpl = new AgentPolicy();
         ERC1967Proxy policyProxy = new ERC1967Proxy(
-            address(policyImpl),
-            abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
+            address(policyImpl), abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
         );
         policy = AgentPolicy(address(policyProxy));
 
@@ -100,16 +96,10 @@ contract IntegrationTest is Test {
     function _twoStageParams() internal view returns (PipelineOrchestrator.StageParam[] memory) {
         PipelineOrchestrator.StageParam[] memory params = new PipelineOrchestrator.StageParam[](2);
         params[0] = PipelineOrchestrator.StageParam({
-            providerAgentId: bobAgentId,
-            providerAddress: bob,
-            capabilityHash: keccak256("audit"),
-            budget: 50e6
+            providerAgentId: bobAgentId, providerAddress: bob, capabilityHash: keccak256("audit"), budget: 50e6
         });
         params[1] = PipelineOrchestrator.StageParam({
-            providerAgentId: charlieAgentId,
-            providerAddress: charlie,
-            capabilityHash: keccak256("deploy"),
-            budget: 30e6
+            providerAgentId: charlieAgentId, providerAddress: charlie, capabilityHash: keccak256("deploy"), budget: 30e6
         });
         return params;
     }
@@ -123,10 +113,7 @@ contract IntegrationTest is Test {
     function _singleStageParams(uint256 budget) internal view returns (PipelineOrchestrator.StageParam[] memory) {
         PipelineOrchestrator.StageParam[] memory params = new PipelineOrchestrator.StageParam[](1);
         params[0] = PipelineOrchestrator.StageParam({
-            providerAgentId: bobAgentId,
-            providerAddress: bob,
-            capabilityHash: keccak256("single-task"),
-            budget: budget
+            providerAgentId: bobAgentId, providerAddress: bob, capabilityHash: keccak256("single-task"), budget: budget
         });
         return params;
     }
@@ -171,8 +158,13 @@ contract IntegrationTest is Test {
         assertTrue(acp.isCompleted(stage0JobId), "Stage 0 ACP job should be completed");
 
         // Verify pipeline state: currentStage=1, totalSpent=50e6
-        (,,, uint256 totalBudget, uint256 totalSpent, uint256 currentStage,,
-         PipelineOrchestrator.PipelineStatus status,,) = orchestrator.pipelines(pipelineId);
+        (
+            ,,,
+            uint256 totalBudget,
+            uint256 totalSpent,
+            uint256 currentStage,,
+            PipelineOrchestrator.PipelineStatus status,,
+        ) = orchestrator.pipelines(pipelineId);
         assertEq(currentStage, 1, "Pipeline should be on stage 1");
         assertEq(totalSpent, 50e6, "50 USDC should be spent after stage 0");
         assertEq(uint256(status), uint256(PipelineOrchestrator.PipelineStatus.Active));
@@ -251,9 +243,7 @@ contract IntegrationTest is Test {
         // Create a 1-stage pipeline
         PipelineOrchestrator.StageParam[] memory params = _singleStageParams(50e6);
         vm.prank(alice);
-        uint256 pipelineId = orchestrator.createPipeline(
-            aliceAgentId, params, address(usdc), block.timestamp + 7 days
-        );
+        uint256 pipelineId = orchestrator.createPipeline(aliceAgentId, params, address(usdc), block.timestamp + 7 days);
 
         // Get the jobId
         PipelineOrchestrator.Stage[] memory stageList = orchestrator.getStages(pipelineId);
@@ -297,8 +287,8 @@ contract IntegrationTest is Test {
         uint256 pipelineId = _createTwoStagePipeline();
 
         // Verify pipeline was created successfully
-        (uint256 clientAgentId,,,uint256 totalBudget,,,,
-         PipelineOrchestrator.PipelineStatus status,,) = orchestrator.pipelines(pipelineId);
+        (uint256 clientAgentId,,, uint256 totalBudget,,,, PipelineOrchestrator.PipelineStatus status,,) =
+            orchestrator.pipelines(pipelineId);
         assertEq(clientAgentId, aliceAgentId);
         assertEq(totalBudget, 80e6);
         assertEq(uint256(status), uint256(PipelineOrchestrator.PipelineStatus.Active));
@@ -333,9 +323,7 @@ contract IntegrationTest is Test {
         // Create 1-stage pipeline
         PipelineOrchestrator.StageParam[] memory params = _singleStageParams(100e6);
         vm.prank(alice);
-        uint256 pipelineId = orchestrator.createPipeline(
-            aliceAgentId, params, address(usdc), block.timestamp + 7 days
-        );
+        uint256 pipelineId = orchestrator.createPipeline(aliceAgentId, params, address(usdc), block.timestamp + 7 days);
 
         // Verify USDC transferred
         assertEq(usdc.balanceOf(alice), aliceBefore - 100e6);
@@ -355,8 +343,8 @@ contract IntegrationTest is Test {
         hook.approveStage(jobId);
 
         // Verify: pipeline Completed, single stage Completed
-        (,,, uint256 totalBudget, uint256 totalSpent,,,
-         PipelineOrchestrator.PipelineStatus status,,) = orchestrator.pipelines(pipelineId);
+        (,,, uint256 totalBudget, uint256 totalSpent,,, PipelineOrchestrator.PipelineStatus status,,) =
+            orchestrator.pipelines(pipelineId);
         assertEq(uint256(status), uint256(PipelineOrchestrator.PipelineStatus.Completed));
         assertEq(totalSpent, 100e6);
         assertEq(totalBudget, 100e6);

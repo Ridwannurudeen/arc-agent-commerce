@@ -42,8 +42,18 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
     event PipelineCancelled(uint256 indexed pipelineId, uint256 refundAmount);
 
     // ---- Types ----
-    enum StageStatus { Pending, Active, Completed, Failed }
-    enum PipelineStatus { Active, Completed, Halted, Cancelled }
+    enum StageStatus {
+        Pending,
+        Active,
+        Completed,
+        Failed
+    }
+    enum PipelineStatus {
+        Active,
+        Completed,
+        Halted,
+        Cancelled
+    }
 
     struct StageParam {
         uint256 providerAgentId;
@@ -328,21 +338,15 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
             s.providerAddress,
             address(commerceHook), // evaluator
             p.deadline,
-            "",                    // description
-            address(commerceHook)  // hook
+            "", // description
+            address(commerceHook) // hook
         );
 
         s.jobId = jobId;
         s.status = StageStatus.Active;
 
         // Register the job in the hook
-        commerceHook.registerPipelineJob(
-            pipelineId,
-            stageIndex,
-            jobId,
-            s.providerAgentId,
-            p.clientAgentId
-        );
+        commerceHook.registerPipelineJob(pipelineId, stageIndex, jobId, s.providerAgentId, p.clientAgentId);
 
         emit StageActivated(pipelineId, stageIndex, jobId);
     }

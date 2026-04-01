@@ -40,10 +40,7 @@ contract CommerceHookTest is Test {
         CommerceHook impl = new CommerceHook();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(impl),
-            abi.encodeCall(
-                CommerceHook.initialize,
-                (address(acp), address(identity), address(reputation), deployer)
-            )
+            abi.encodeCall(CommerceHook.initialize, (address(acp), address(identity), address(reputation), deployer))
         );
         hook = CommerceHook(address(proxy));
         hook.setOrchestrator(address(orch));
@@ -100,13 +97,8 @@ contract CommerceHookTest is Test {
         vm.prank(address(orch));
         hook.registerPipelineJob(PIPELINE_ID, STAGE_INDEX, jobId, bobAgentId, aliceAgentId);
 
-        (
-            uint256 pipelineId,
-            uint256 stageIndex,
-            uint256 providerAgentId,
-            uint256 clientAgentId,
-            bool exists
-        ) = hook.jobRegistry(jobId);
+        (uint256 pipelineId, uint256 stageIndex, uint256 providerAgentId, uint256 clientAgentId, bool exists) =
+            hook.jobRegistry(jobId);
 
         assertEq(pipelineId, PIPELINE_ID);
         assertEq(stageIndex, STAGE_INDEX);

@@ -18,10 +18,8 @@ contract AgentPolicyTest is Test {
         vm.startPrank(deployer);
         identity = new MockIdentityRegistry();
         AgentPolicy impl = new AgentPolicy();
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(impl),
-            abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
-        );
+        ERC1967Proxy proxy =
+            new ERC1967Proxy(address(impl), abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer)));
         policy = AgentPolicy(address(proxy));
         policy.setOrchestrator(orchestrator);
         vm.stopPrank();
@@ -33,8 +31,7 @@ contract AgentPolicyTest is Test {
         vm.prank(alice);
         policy.setPolicy(alice, 100e6, 500e6);
 
-        (uint256 maxPerTx, uint256 maxDaily, uint256 dailySpent, uint256 dayStart, bool exists) =
-            policy.policies(alice);
+        (uint256 maxPerTx, uint256 maxDaily, uint256 dailySpent, uint256 dayStart, bool exists) = policy.policies(alice);
         assertEq(maxPerTx, 100e6);
         assertEq(maxDaily, 500e6);
         assertEq(dailySpent, 0);

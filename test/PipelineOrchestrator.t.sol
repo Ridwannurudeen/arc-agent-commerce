@@ -21,8 +21,8 @@ contract PipelineOrchestratorTest is Test {
     MockUSDC usdc;
 
     address deployer = makeAddr("deployer");
-    address alice = makeAddr("alice");   // client
-    address bob = makeAddr("bob");       // provider
+    address alice = makeAddr("alice"); // client
+    address bob = makeAddr("bob"); // provider
     address charlie = makeAddr("charlie"); // provider2
 
     uint256 aliceAgentId;
@@ -42,18 +42,14 @@ contract PipelineOrchestratorTest is Test {
         CommerceHook hookImpl = new CommerceHook();
         ERC1967Proxy hookProxy = new ERC1967Proxy(
             address(hookImpl),
-            abi.encodeCall(
-                CommerceHook.initialize,
-                (address(acp), address(identity), address(reputation), deployer)
-            )
+            abi.encodeCall(CommerceHook.initialize, (address(acp), address(identity), address(reputation), deployer))
         );
         hook = CommerceHook(address(hookProxy));
 
         // Deploy AgentPolicy via UUPS proxy
         AgentPolicy policyImpl = new AgentPolicy();
         ERC1967Proxy policyProxy = new ERC1967Proxy(
-            address(policyImpl),
-            abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
+            address(policyImpl), abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
         );
         policy = AgentPolicy(address(policyProxy));
 
@@ -97,10 +93,7 @@ contract PipelineOrchestratorTest is Test {
     function _twoStageParams() internal view returns (PipelineOrchestrator.StageParam[] memory) {
         PipelineOrchestrator.StageParam[] memory params = new PipelineOrchestrator.StageParam[](2);
         params[0] = PipelineOrchestrator.StageParam({
-            providerAgentId: bobAgentId,
-            providerAddress: bob,
-            capabilityHash: keccak256("data-analysis"),
-            budget: 50e6
+            providerAgentId: bobAgentId, providerAddress: bob, capabilityHash: keccak256("data-analysis"), budget: 50e6
         });
         params[1] = PipelineOrchestrator.StageParam({
             providerAgentId: charlieAgentId,
@@ -124,9 +117,7 @@ contract PipelineOrchestratorTest is Test {
         uint256 aliceBefore = usdc.balanceOf(alice);
 
         vm.prank(alice);
-        uint256 pipelineId = orchestrator.createPipeline(
-            aliceAgentId, params, address(usdc), block.timestamp + 7 days
-        );
+        uint256 pipelineId = orchestrator.createPipeline(aliceAgentId, params, address(usdc), block.timestamp + 7 days);
 
         // Verify pipeline state
         (
@@ -218,8 +209,7 @@ contract PipelineOrchestratorTest is Test {
         assertEq(uint256(stagesAfter[1].status), uint256(PipelineOrchestrator.StageStatus.Active));
         assertGt(stagesAfter[1].jobId, 0); // new ACP job created for stage 1
 
-        (,,, uint256 totalBudget, uint256 totalSpent, uint256 currentStage,,,,) =
-            orchestrator.pipelines(pipelineId);
+        (,,, uint256 totalBudget, uint256 totalSpent, uint256 currentStage,,,,) = orchestrator.pipelines(pipelineId);
         assertEq(currentStage, 1);
         assertEq(totalSpent, 50e6); // stage 0 budget
     }
@@ -344,16 +334,11 @@ contract PipelineOrchestratorTest is Test {
     function test_singleStagePipeline() public {
         PipelineOrchestrator.StageParam[] memory params = new PipelineOrchestrator.StageParam[](1);
         params[0] = PipelineOrchestrator.StageParam({
-            providerAgentId: bobAgentId,
-            providerAddress: bob,
-            capabilityHash: keccak256("single-task"),
-            budget: 100e6
+            providerAgentId: bobAgentId, providerAddress: bob, capabilityHash: keccak256("single-task"), budget: 100e6
         });
 
         vm.prank(alice);
-        uint256 pipelineId = orchestrator.createPipeline(
-            aliceAgentId, params, address(usdc), block.timestamp + 7 days
-        );
+        uint256 pipelineId = orchestrator.createPipeline(aliceAgentId, params, address(usdc), block.timestamp + 7 days);
 
         // Verify single stage is active
         PipelineOrchestrator.Stage[] memory stageList = orchestrator.getStages(pipelineId);
