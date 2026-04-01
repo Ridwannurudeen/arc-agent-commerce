@@ -15,8 +15,16 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
       - name: Build contracts
         run: forge build
-      - name: Run tests
+      - name: Run all tests
         run: forge test -v
+      - name: Test CommerceHook
+        run: forge test --match-contract CommerceHookTest -v
+      - name: Test AgentPolicy
+        run: forge test --match-contract AgentPolicyTest -v
+      - name: Test PipelineOrchestrator
+        run: forge test --match-contract PipelineOrchestratorTest -v
+      - name: Test Integration
+        run: forge test --match-contract IntegrationTest -v
       - name: Check formatting
         run: forge fmt --check
 
