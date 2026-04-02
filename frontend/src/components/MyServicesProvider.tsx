@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { CONTRACTS } from "@/config";
+import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import { capabilityName } from "@/lib/constants";
 import { formatUnits } from "viem";
@@ -22,6 +22,7 @@ export function MyServicesProvider({ onViewAgent }: Props) {
     address: CONTRACTS.SERVICE_MARKET,
     abi: ServiceMarketABI,
     functionName: "nextServiceId",
+    chainId: arcTestnet.id,
   });
 
   const serviceCount = Number(nextId ?? 0);
@@ -32,6 +33,7 @@ export function MyServicesProvider({ onViewAgent }: Props) {
       abi: ServiceMarketABI as any,
       functionName: "getService",
       args: [BigInt(i)],
+      chainId: arcTestnet.id,
     })),
     query: { enabled: serviceCount > 0 },
   });

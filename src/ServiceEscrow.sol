@@ -277,6 +277,7 @@ contract ServiceEscrow is Initializable, UUPSUpgradeable, PausableUpgradeable, O
     }
 
     function setFeeRecipient(address newRecipient) external onlyOwner {
+        if (newRecipient == address(0)) revert ZeroAddress();
         feeRecipient = newRecipient;
         emit FeeRecipientUpdated(newRecipient);
     }

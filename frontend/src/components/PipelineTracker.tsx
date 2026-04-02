@@ -90,6 +90,7 @@ export function PipelineTracker({ pipelineId }: Props) {
         abi: AgenticCommerceABI as any,
         functionName: "getJob",
         args: [s.jobId],
+        chainId: arcTestnet.id,
       })),
     query: { enabled: jobIds.length > 0 },
   });

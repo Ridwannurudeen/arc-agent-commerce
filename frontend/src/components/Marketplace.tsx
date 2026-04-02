@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
-import { CONTRACTS } from "@/config";
+import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
+import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { capabilityName } from "@/lib/constants";
 import { formatUnits } from "viem";
 import { Skeleton } from "@/components/Skeleton";
@@ -16,23 +17,63 @@ type Props = {
 export function Marketplace({ onViewAgent, onHire }: Props) {
   const [selectedCapability, setSelectedCapability] = useState<string>("all");
 
-  const { data: nextId } = useReadContract({
+  const { data: nextId, isError: serviceError } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
     abi: ServiceMarketABI,
     functionName: "nextServiceId",
+    chainId: arcTestnet.id,
   });
 
   const serviceCount = Number(nextId ?? 0);
 
-  const { data: servicesRaw, isLoading } = useReadContracts({
+  const { data: servicesRaw, isLoading, isError: batchError } = useReadContracts({
     contracts: Array.from({ length: serviceCount }, (_, i) => ({
       address: CONTRACTS.SERVICE_MARKET as `0x${string}`,
       abi: ServiceMarketABI as any,
       functionName: "getService",
       args: [BigInt(i)],
+      chainId: arcTestnet.id,
     })),
     query: { enabled: serviceCount > 0 },
   });
+
+  // Fetch ACP job stats for reputation badges
+  const { data: jobCounterRaw } = useReadContract({
+    address: CONTRACTS.AGENTIC_COMMERCE,
+    abi: AgenticCommerceABI as any,
+    functionName: "jobCounter",
+    chainId: arcTestnet.id,
+  });
+
+  const jobCount = Number(jobCounterRaw ?? 0);
+
+  const { data: jobsRaw } = useReadContracts({
+    contracts: Array.from({ length: jobCount }, (_, i) => ({
+      address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
+      abi: AgenticCommerceABI as any,
+      functionName: "getJob",
+      args: [BigInt(i + 1)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: jobCount > 0 },
+  });
+
+  // Build provider reputation map: provider address -> { completed, total }
+  const providerStats = useMemo(() => {
+    const map = new Map<string, { completed: number; total: number }>();
+    if (!jobsRaw) return map;
+    for (const r of jobsRaw) {
+      if (r.status !== "success" || !r.result) continue;
+      const j = r.result as any;
+      const provider = ((j.provider ?? j[2] ?? "") as string).toLowerCase();
+      if (provider === "0x0000000000000000000000000000000000000000") continue;
+      if (!map.has(provider)) map.set(provider, { completed: 0, total: 0 });
+      const stats = map.get(provider)!;
+      stats.total++;
+      if (Number(j.status ?? j[7] ?? 0) === 3) stats.completed++;
+    }
+    return map;
+  }, [jobsRaw]);
 
   const services = useMemo(() => {
     if (!servicesRaw) return [];
@@ -68,6 +109,8 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
       ? services
       : services.filter((s) => s.capabilityHash.toLowerCase() === selectedCapability);
 
+  const isError = serviceError || batchError;
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
@@ -99,58 +142,85 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
 
       {isLoading && <Skeleton />}
 
-      {!isLoading && filtered.length === 0 && (
+      {isError && !isLoading && (
+        <div className="warning-banner" style={{ marginBottom: "1rem" }}>
+          Failed to load marketplace data. Check your network connection or switch to Arc Testnet.
+        </div>
+      )}
+
+      {!isLoading && !isError && filtered.length === 0 && (
         <div className="card" style={{ textAlign: "center", padding: "3rem" }}>
-          <p style={{ color: "var(--text-dim)", marginBottom: "0.5rem" }}>No agents available yet.</p>
+          <p style={{ color: "var(--text-dim)", marginBottom: "0.5rem" }}>
+            {selectedCapability === "all"
+              ? "No agents available yet."
+              : `No agents offering ${capabilityName(selectedCapability)}.`}
+          </p>
           <p style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>
-            Be the first — register your agent in the Provider section.
+            {selectedCapability === "all"
+              ? "Be the first — register your agent in the Provider section."
+              : "Try a different capability or browse all services."}
           </p>
         </div>
       )}
 
       <div style={{ display: "grid", gap: "0.75rem" }}>
-        {filtered.map((s) => (
-          <div
-            key={s.serviceId}
-            className="card"
-            style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem" }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
-                <button className="agent-link" onClick={() => onViewAgent(s.agentId)} style={{ fontWeight: 600, background: "none", border: "none", padding: 0 }}>
-                  Agent #{s.agentId}
-                </button>
-                <span className="status active" style={{ fontSize: "0.75rem" }}>
-                  {capabilityName(s.capabilityHash)}
+        {filtered.map((s) => {
+          const stats = providerStats.get(s.provider.toLowerCase());
+          return (
+            <div
+              key={s.serviceId}
+              className="card"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem" }}
+            >
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
+                  <button className="agent-link" onClick={() => onViewAgent(s.agentId)} style={{ fontWeight: 600, background: "none", border: "none", padding: 0 }}>
+                    Agent #{s.agentId}
+                  </button>
+                  <span className="status active" style={{ fontSize: "0.75rem" }}>
+                    {capabilityName(s.capabilityHash)}
+                  </span>
+                  {stats && stats.total > 0 && (
+                    <span style={{
+                      fontSize: "0.7rem",
+                      padding: "0.15rem 0.4rem",
+                      borderRadius: "4px",
+                      background: stats.completed === stats.total ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
+                      color: stats.completed === stats.total ? "var(--green)" : "var(--yellow)",
+                      fontWeight: 600,
+                    }}>
+                      {stats.completed}/{stats.total} jobs
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
+                  {s.provider.slice(0, 6)}...{s.provider.slice(-4)}
+                  {s.metadataURI && (
+                    <>
+                      {" "}
+                      &middot; {s.metadataURI.length > 50 ? s.metadataURI.slice(0, 50) + "..." : s.metadataURI}
+                    </>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <span style={{ fontWeight: 600, fontSize: "1rem" }}>
+                  {formatUnits(s.pricePerTask, 6)} USDC
                 </span>
-              </div>
-              <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
-                {s.provider.slice(0, 6)}...{s.provider.slice(-4)}
-                {s.metadataURI && (
-                  <>
-                    {" "}
-                    &middot; {s.metadataURI.length > 50 ? s.metadataURI.slice(0, 50) + "..." : s.metadataURI}
-                  </>
-                )}
+                <button className="btn-sm btn-outline" onClick={() => onViewAgent(s.agentId)}>
+                  Profile
+                </button>
+                <button
+                  className="btn-sm"
+                  style={{ background: "var(--accent)", color: "#fff" }}
+                  onClick={() => onHire(s.agentId, s.provider, s.capabilityHash, s.pricePerTask)}
+                >
+                  Hire
+                </button>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <span style={{ fontWeight: 600, fontSize: "1rem" }}>
-                {formatUnits(s.pricePerTask, 6)} USDC
-              </span>
-              <button className="btn-sm btn-outline" onClick={() => onViewAgent(s.agentId)}>
-                Profile
-              </button>
-              <button
-                className="btn-sm"
-                style={{ background: "var(--accent)", color: "#fff" }}
-                onClick={() => onHire(s.agentId, s.provider, s.capabilityHash, s.pricePerTask)}
-              >
-                Hire
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

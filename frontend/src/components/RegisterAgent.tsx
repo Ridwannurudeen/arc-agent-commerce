@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { CONTRACTS } from "@/config";
+import { CONTRACTS, arcTestnet } from "@/config";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import { CAPABILITY_NAMES } from "@/lib/constants";
@@ -19,6 +19,7 @@ export function RegisterAgent() {
     abi: IdentityRegistryABI,
     functionName: "balanceOf",
     args: [address!],
+    chainId: arcTestnet.id,
     query: { enabled: !!address },
   });
 

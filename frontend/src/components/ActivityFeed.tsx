@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
@@ -9,12 +9,18 @@ import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { STATUS_LABELS, PIPELINE_STATUS, JOB_STATUS } from "@/lib/constants";
 import type { AgreementData } from "@/lib/types";
+import { Skeleton } from "@/components/Skeleton";
+
+const PAGE_SIZE = 25;
 
 type Props = {
   onViewAgent: (agentId: number) => void;
 };
 
 export function ActivityFeed({ onViewAgent }: Props) {
+  const [page, setPage] = useState(0);
+  const [typeFilter, setTypeFilter] = useState<"all" | "acp-job" | "pipeline" | "agreement">("all");
+
   // Agreements
   const { data: nextAgrId } = useReadContract({
     address: CONTRACTS.SERVICE_ESCROW,
@@ -24,14 +30,13 @@ export function ActivityFeed({ onViewAgent }: Props) {
   });
 
   const agrCount = Number(nextAgrId ?? 0);
-  const agrIds = Array.from({ length: agrCount }, (_, i) => i);
 
-  const { data: agrBatch } = useReadContracts({
-    contracts: agrIds.map((id) => ({
+  const { data: agrBatch, isLoading: loadingAgr } = useReadContracts({
+    contracts: Array.from({ length: agrCount }, (_, i) => ({
       address: CONTRACTS.SERVICE_ESCROW as `0x${string}`,
       abi: ServiceEscrowABI as any,
       functionName: "getAgreement",
-      args: [BigInt(id)],
+      args: [BigInt(i)],
       chainId: arcTestnet.id,
     })),
     query: { enabled: agrCount > 0 },
@@ -46,14 +51,13 @@ export function ActivityFeed({ onViewAgent }: Props) {
   });
 
   const pipCount = Number(nextPipId ?? 0);
-  const pipIds = Array.from({ length: pipCount }, (_, i) => i);
 
-  const { data: pipBatch } = useReadContracts({
-    contracts: pipIds.map((id) => ({
+  const { data: pipBatch, isLoading: loadingPip } = useReadContracts({
+    contracts: Array.from({ length: pipCount }, (_, i) => ({
       address: CONTRACTS.PIPELINE_ORCHESTRATOR as `0x${string}`,
       abi: PipelineOrchestratorABI as any,
       functionName: "pipelines",
-      args: [BigInt(id)],
+      args: [BigInt(i)],
       chainId: arcTestnet.id,
     })),
     query: { enabled: pipCount > 0 },
@@ -69,7 +73,7 @@ export function ActivityFeed({ onViewAgent }: Props) {
 
   const jobCount = Number(jobCounterRaw ?? 0);
 
-  const { data: jobBatch } = useReadContracts({
+  const { data: jobBatch, isLoading: loadingJobs } = useReadContracts({
     contracts: Array.from({ length: jobCount }, (_, i) => ({
       address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
       abi: AgenticCommerceABI as any,
@@ -144,6 +148,27 @@ export function ActivityFeed({ onViewAgent }: Props) {
     return list;
   }, [agrBatch, pipBatch, jobBatch]);
 
+  const filtered = typeFilter === "all" ? items : items.filter((i) => i.type === typeFilter);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const isLoading = loadingAgr || loadingPip || loadingJobs;
+
+  const typeCounts = useMemo(() => {
+    const counts = { "acp-job": 0, pipeline: 0, agreement: 0 };
+    for (const item of items) counts[item.type]++;
+    return counts;
+  }, [items]);
+
+  if (isLoading) {
+    return (
+      <div>
+        <h2 style={{ marginBottom: "0.5rem" }}>Activity</h2>
+        <Skeleton />
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return <div className="empty">No protocol activity yet.</div>;
   }
@@ -152,9 +177,30 @@ export function ActivityFeed({ onViewAgent }: Props) {
     <div>
       <h2 style={{ marginBottom: "0.5rem" }}>Activity</h2>
       <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
-        All ecosystem activity — ACP jobs, pipelines, agreements (newest first)
+        {items.length} events — ACP jobs, pipelines, agreements (newest first)
       </div>
-      {items.map((item) => {
+
+      {/* Type filter */}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+        {(["all", "acp-job", "pipeline", "agreement"] as const).map((t) => {
+          const label = t === "all" ? `All (${items.length})`
+            : t === "acp-job" ? `ACP Jobs (${typeCounts["acp-job"]})`
+            : t === "pipeline" ? `Pipelines (${typeCounts.pipeline})`
+            : `Agreements (${typeCounts.agreement})`;
+          return (
+            <button
+              key={t}
+              className={`btn-sm ${typeFilter === t ? "" : "btn-outline"}`}
+              onClick={() => { setTypeFilter(t); setPage(0); }}
+              style={typeFilter === t ? { background: "var(--accent)", color: "#fff" } : {}}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {paged.map((item) => {
         if (item.type === "acp-job") {
           const j = item.data;
           const statusLabel = JOB_STATUS[j.status] ?? "Unknown";
@@ -249,6 +295,21 @@ export function ActivityFeed({ onViewAgent }: Props) {
           </div>
         );
       })}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "1rem" }}>
+          <button className="btn-sm btn-outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
+            Newer
+          </button>
+          <span style={{ fontSize: "0.85rem", color: "var(--text-dim)", lineHeight: "32px" }}>
+            Page {page + 1} / {totalPages}
+          </span>
+          <button className="btn-sm btn-outline" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
+            Older
+          </button>
+        </div>
+      )}
     </div>
   );
 }

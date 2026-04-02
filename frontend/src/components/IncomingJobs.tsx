@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useAccount, useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { CONTRACTS } from "@/config";
+import { CONTRACTS, arcTestnet } from "@/config";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { capabilityName, JOB_STATUS } from "@/lib/constants";
@@ -30,6 +30,7 @@ export function IncomingJobs() {
     address: CONTRACTS.PIPELINE_ORCHESTRATOR,
     abi: PipelineOrchestratorABI,
     functionName: "nextPipelineId",
+    chainId: arcTestnet.id,
   });
 
   const pipelineCount = Number(nextPipelineId ?? 0);
@@ -41,6 +42,7 @@ export function IncomingJobs() {
       abi: PipelineOrchestratorABI as any,
       functionName: "getStages",
       args: [BigInt(i)],
+      chainId: arcTestnet.id,
     })),
     query: { enabled: pipelineCount > 0 },
   });
@@ -76,6 +78,7 @@ export function IncomingJobs() {
       abi: AgenticCommerceABI as any,
       functionName: "getJob",
       args: [BigInt(jobId)],
+      chainId: arcTestnet.id,
     })),
     query: { enabled: jobIds.length > 0 },
   });

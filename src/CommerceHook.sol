@@ -160,7 +160,7 @@ contract CommerceHook is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     function afterAction(uint256 jobId, bytes4 selector, bytes calldata) external onlyACP {
         JobInfo memory info = jobRegistry[jobId];
-        if (!info.exists) return;
+        if (!info.exists) revert JobNotRegistered();
 
         // Auto-approve on submit if enabled
         if (selector == IAgenticCommerce.submit.selector && autoApprove[info.pipelineId]) {

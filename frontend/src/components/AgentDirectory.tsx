@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useReadContracts } from "wagmi";
+import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACTS, arcTestnet } from "@/config";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import { Skeleton } from "@/components/Skeleton";
 
 const PAGE_SIZE = 25;
-// Total agents discovered on-chain — we read the latest ones first
-const MAX_AGENT_ID = 1160;
 
 type AgentInfo = {
   id: number;
@@ -20,11 +18,20 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
   const [page, setPage] = useState(0);
   const [searchId, setSearchId] = useState("");
 
-  const totalPages = Math.ceil(MAX_AGENT_ID / PAGE_SIZE);
+  // Read total agent count dynamically from contract
+  const { data: totalSupplyRaw } = useReadContract({
+    address: CONTRACTS.IDENTITY_REGISTRY,
+    abi: IdentityRegistryABI,
+    functionName: "totalSupply",
+    chainId: arcTestnet.id,
+  });
+
+  const totalAgents = Number(totalSupplyRaw ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalAgents / PAGE_SIZE));
   // Show newest first: page 0 = agents MAX..MAX-PAGE_SIZE
-  const startId = MAX_AGENT_ID - page * PAGE_SIZE;
+  const startId = totalAgents - page * PAGE_SIZE;
   const endId = Math.max(1, startId - PAGE_SIZE + 1);
-  const ids = Array.from({ length: startId - endId + 1 }, (_, i) => startId - i);
+  const ids = startId > 0 ? Array.from({ length: startId - endId + 1 }, (_, i) => startId - i) : [];
 
   // Batch read ownerOf for this page
   const { data: ownersRaw, isLoading: loadingOwners } = useReadContracts({
@@ -71,7 +78,7 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
 
   const handleSearch = () => {
     const id = parseInt(searchId);
-    if (id > 0 && id <= MAX_AGENT_ID) {
+    if (id > 0) {
       onViewAgent(id);
     }
   };
@@ -84,7 +91,7 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <h2>Agent Directory — Arc Ecosystem</h2>
         <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-          {MAX_AGENT_ID} agents registered
+          {totalAgents} agents registered
         </span>
       </div>
 
@@ -113,7 +120,7 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
 
       {isLoading && <Skeleton />}
 
-      {!isLoading && (
+      {!isLoading && totalAgents > 0 && (
         <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "0.75rem" }}>
           Showing agents #{startId} – #{endId} &middot; {uniqueOwners} unique owners on this page
         </div>

@@ -175,9 +175,23 @@ export function SpendingPolicyTab() {
             required
           />
         </div>
+        {maxPerTx && maxDaily && Number(maxPerTx) > Number(maxDaily) && (
+          <div className="warning-banner" style={{ marginBottom: "0.75rem" }}>
+            Max Per Transaction cannot exceed Max Daily limit.
+          </div>
+        )}
+        {maxPerTx && Number(maxPerTx) <= 0 && (
+          <div className="warning-banner" style={{ marginBottom: "0.75rem" }}>
+            Max Per Transaction must be greater than 0.
+          </div>
+        )}
         <button
           className="btn"
-          disabled={isLoading || !agentAddr || !maxPerTx || !maxDaily}
+          disabled={
+            isLoading || !agentAddr || !maxPerTx || !maxDaily ||
+            Number(maxPerTx) <= 0 || Number(maxDaily) <= 0 ||
+            Number(maxPerTx) > Number(maxDaily)
+          }
           onClick={() =>
             writeContract(
               {

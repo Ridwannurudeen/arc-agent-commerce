@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { CONTRACTS, arcTestnet } from "@/config";
@@ -77,8 +77,8 @@ function AgentServiceRow({ serviceId, agentId, onHire }: { serviceId: number; ag
   );
 }
 
-function AgentReputation({ agentId }: { agentId: number }) {
-  // Compute from pipeline stages where this agent is provider
+function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: string | undefined }) {
+  // Pipeline stages
   const { data: nextPipelineId } = useReadContract({
     address: CONTRACTS.PIPELINE_ORCHESTRATOR,
     abi: PipelineOrchestratorABI,
@@ -94,35 +94,79 @@ function AgentReputation({ agentId }: { agentId: number }) {
       abi: PipelineOrchestratorABI as any,
       functionName: "getStages",
       args: [BigInt(i)],
+      chainId: arcTestnet.id,
     })),
     query: { enabled: pipelineCount > 0 },
   });
 
+  // ACP jobs for reputation
+  const { data: jobCounterRaw } = useReadContract({
+    address: CONTRACTS.AGENTIC_COMMERCE,
+    abi: AgenticCommerceABI as any,
+    functionName: "jobCounter",
+    chainId: arcTestnet.id,
+  });
+
+  const jobCounter = Number(jobCounterRaw ?? 0);
+
+  const { data: jobsRaw } = useReadContracts({
+    contracts: Array.from({ length: jobCounter }, (_, i) => ({
+      address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
+      abi: AgenticCommerceABI as any,
+      functionName: "getJob",
+      args: [BigInt(i + 1)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: jobCounter > 0 && !!ownerAddr },
+  });
+
   const stats = useMemo(() => {
-    let completed = 0;
-    let failed = 0;
-    let total = 0;
+    let pipelineCompleted = 0;
+    let pipelineFailed = 0;
+    let pipelineTotal = 0;
+    let acpCompleted = 0;
+    let acpRejected = 0;
+    let acpTotal = 0;
 
-    if (!stagesRaw) return { completed, failed, total, score: 0 };
-
-    for (const r of stagesRaw) {
-      if (r.status !== "success" || !r.result) continue;
-      const stages = r.result as any[];
-      for (const s of stages) {
-        const provAgentId = Number(s.providerAgentId ?? s[0]);
-        if (provAgentId !== agentId) continue;
-        total++;
-        if (Number(s.status ?? s[5]) === 2) completed++;
-        if (Number(s.status ?? s[5]) === 3) failed++;
+    // Pipeline stages
+    if (stagesRaw) {
+      for (const r of stagesRaw) {
+        if (r.status !== "success" || !r.result) continue;
+        const stages = r.result as any[];
+        for (const s of stages) {
+          const provAgentId = Number(s.providerAgentId ?? s[0]);
+          if (provAgentId !== agentId) continue;
+          pipelineTotal++;
+          if (Number(s.status ?? s[5]) === 2) pipelineCompleted++;
+          if (Number(s.status ?? s[5]) === 3) pipelineFailed++;
+        }
       }
     }
 
+    // ACP jobs where owner is provider
+    if (jobsRaw && ownerAddr) {
+      const ownerLower = ownerAddr.toLowerCase();
+      for (const r of jobsRaw) {
+        if (r.status !== "success" || !r.result) continue;
+        const j = r.result as any;
+        const provider = (j.provider ?? j[2] ?? "").toLowerCase();
+        if (provider !== ownerLower) continue;
+        acpTotal++;
+        const status = Number(j.status ?? j[7] ?? 0);
+        if (status === 3) acpCompleted++; // Completed
+        if (status === 4) acpRejected++; // Rejected
+      }
+    }
+
+    const completed = pipelineCompleted + acpCompleted;
+    const failed = pipelineFailed + acpRejected;
+    const total = pipelineTotal + acpTotal;
     const score = completed * 100 - failed * 50;
-    return { completed, failed, total, score };
-  }, [stagesRaw, agentId]);
+    return { completed, failed, total, score, pipelineTotal, acpTotal };
+  }, [stagesRaw, jobsRaw, agentId, ownerAddr]);
 
   if (stats.total === 0) {
-    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>No pipeline history yet.</div>;
+    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>No on-chain history yet.</div>;
   }
 
   return (
@@ -147,9 +191,16 @@ function AgentReputation({ agentId }: { agentId: number }) {
         </div>
         <div>
           <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{stats.total}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Total</div>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Total Jobs</div>
         </div>
       </div>
+      {(stats.pipelineTotal > 0 || stats.acpTotal > 0) && (
+        <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
+          {stats.pipelineTotal > 0 && <span>{stats.pipelineTotal} pipeline stages</span>}
+          {stats.pipelineTotal > 0 && stats.acpTotal > 0 && <span> + </span>}
+          {stats.acpTotal > 0 && <span>{stats.acpTotal} ACP jobs</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -238,6 +289,13 @@ function AgentAcpHistory({ ownerAddr }: { ownerAddr: string }) {
 }
 
 export function AgentProfileModal({ agentId, onClose, onHire }: Props) {
+  // Escape key to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   const { data: ownerAddr } = useReadContract({
     address: CONTRACTS.IDENTITY_REGISTRY,
     abi: IdentityRegistryABI,
@@ -284,7 +342,7 @@ export function AgentProfileModal({ agentId, onClose, onHire }: Props) {
 
         <div className="profile-section">
           <h4>Reputation</h4>
-          <AgentReputation agentId={agentId} />
+          <AgentReputation agentId={agentId} ownerAddr={ownerAddr as string | undefined} />
         </div>
 
         <div className="profile-section">

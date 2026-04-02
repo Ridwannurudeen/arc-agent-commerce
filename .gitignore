@@ -1,17 +1,18 @@
-
-!/broadcast
 # Compiler files
-# Docs
-# Dotenv file
-# Ignores development broadcast logs
-*.egg-info/
-.env
-/broadcast/**/dry-run/
-/broadcast/*/31337/
-__pycache__/
-broadcast/
 cache/
-docs/
 out/
+
+# Forge broadcast logs
+broadcast/
+
+# Docs (auto-generated)
+docs/
+
+# Environment and secrets
+.env
 scripts/demo_wallets.json
+
+# Python
+__pycache__/
+*.egg-info/
 sdk/dist/
