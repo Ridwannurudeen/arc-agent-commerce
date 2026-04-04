@@ -17,6 +17,7 @@ from arc_commerce.constants import (
     PIPELINE_ORCHESTRATOR_ADDRESS,
     COMMERCE_HOOK_ADDRESS,
     AGENT_POLICY_ADDRESS,
+    STREAM_ESCROW_ADDRESS,
     get_network_config,
 )
 from arc_commerce.types import (
@@ -57,6 +58,7 @@ class ArcCommerce:
         orchestrator_address: str = None,
         hook_address: str = None,
         agent_policy_address: str = None,
+        stream_escrow_address: str = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
         tx_timeout: int = 120,
@@ -132,6 +134,16 @@ class ArcCommerce:
             self.agent_policy = self.w3.eth.contract(
                 address=Web3.to_checksum_address(apolicy_addr),
                 abi=AGENT_POLICY_ABI,
+            )
+
+        # StreamEscrow (optional)
+        stream_addr = stream_escrow_address or config.get("stream_escrow", STREAM_ESCROW_ADDRESS)
+        self.stream_escrow = None
+        if stream_addr:
+            from arc_commerce.abi import STREAM_ESCROW_ABI
+            self.stream_escrow = self.w3.eth.contract(
+                address=Web3.to_checksum_address(stream_addr),
+                abi=STREAM_ESCROW_ABI,
             )
 
         self._nonce = None  # Client-side nonce tracker
@@ -641,3 +653,128 @@ class ArcCommerce:
         if not addr:
             raise ValueError(f"Unknown currency: {currency}. Use 'USDC', 'EURC', or a hex address.")
         return Web3.to_checksum_address(addr)
+
+    # ── Stream Escrow Methods ──
+
+    def _require_stream_escrow(self):
+        if not self.stream_escrow:
+            raise ValueError("StreamEscrow address not configured.")
+
+    def create_stream(
+        self,
+        client_agent_id: int,
+        provider_agent_id: int,
+        provider_address: str,
+        amount_usdc: float,
+        duration_seconds: int,
+        heartbeat_interval: int = 60,
+        currency: str = "USDC",
+    ) -> int:
+        """Create a heartbeat-gated streaming payment. Returns the stream ID."""
+        self._require_stream_escrow()
+        currency_addr = self._resolve_currency(currency)
+        amount = int(amount_usdc * 1_000_000)
+        allowance = self.usdc.functions.allowance(
+            self.account.address, self.stream_escrow.address
+        ).call()
+        if allowance < amount:
+            self._send_tx(self.usdc.functions.approve(self.stream_escrow.address, amount))
+        receipt = self._send_tx(
+            self.stream_escrow.functions.createStream(
+                client_agent_id,
+                provider_agent_id,
+                Web3.to_checksum_address(provider_address),
+                Web3.to_checksum_address(currency_addr),
+                amount,
+                duration_seconds,
+                heartbeat_interval,
+            )
+        )
+        logs = self.stream_escrow.events.StreamCreated().process_receipt(receipt)
+        return logs[0]["args"]["streamId"] if logs else -1
+
+    def heartbeat(self, stream_id: int) -> dict:
+        """Send a heartbeat for a stream (provider only)."""
+        self._require_stream_escrow()
+        return self._send_tx(self.stream_escrow.functions.heartbeat(stream_id))
+
+    def resume_stream(self, stream_id: int) -> dict:
+        """Resume a paused stream (provider only)."""
+        self._require_stream_escrow()
+        return self._send_tx(self.stream_escrow.functions.resume(stream_id))
+
+    def withdraw_stream(self, stream_id: int) -> dict:
+        """Withdraw accrued balance from a stream (provider only)."""
+        self._require_stream_escrow()
+        return self._send_tx(self.stream_escrow.functions.withdraw(stream_id))
+
+    def cancel_stream(self, stream_id: int) -> dict:
+        """Cancel a stream and refund remaining deposit (client only)."""
+        self._require_stream_escrow()
+        return self._send_tx(self.stream_escrow.functions.cancel(stream_id))
+
+    def top_up_stream(self, stream_id: int, amount_usdc: float) -> dict:
+        """Top up a stream with additional USDC."""
+        self._require_stream_escrow()
+        amount = int(amount_usdc * 1_000_000)
+        allowance = self.usdc.functions.allowance(
+            self.account.address, self.stream_escrow.address
+        ).call()
+        if allowance < amount:
+            self._send_tx(self.usdc.functions.approve(self.stream_escrow.address, amount))
+        return self._send_tx(self.stream_escrow.functions.topUp(stream_id, amount))
+
+    def check_stream(self, stream_id: int) -> dict:
+        """Check a stream for missed heartbeats (anyone can call)."""
+        self._require_stream_escrow()
+        return self._send_tx(self.stream_escrow.functions.checkStream(stream_id))
+
+    def get_stream(self, stream_id: int):
+        """Get stream details by ID. Returns a StreamInfo dataclass."""
+        from arc_commerce.types import StreamInfo, StreamStatus
+        self._require_stream_escrow()
+        raw = self._retry(lambda: self.stream_escrow.functions.getStream(stream_id).call())
+        return StreamInfo(
+            stream_id=stream_id,
+            client=raw[0],
+            provider=raw[1],
+            client_agent_id=raw[2],
+            provider_agent_id=raw[3],
+            currency=raw[4],
+            deposit=raw[5],
+            withdrawn=raw[6],
+            start_time=raw[7],
+            end_time=raw[8],
+            heartbeat_interval=raw[9],
+            last_heartbeat=raw[10],
+            missed_beats=raw[11],
+            paused_at=raw[12],
+            total_paused_time=raw[13],
+            status=StreamStatus(raw[14]),
+        )
+
+    def stream_balance(self, stream_id: int) -> float:
+        """Get the claimable balance of a stream in USDC."""
+        self._require_stream_escrow()
+        raw = self._retry(lambda: self.stream_escrow.functions.balanceOf(stream_id).call())
+        return raw / 1_000_000
+
+    def stream_remaining(self, stream_id: int) -> float:
+        """Get the remaining (unearned) balance of a stream in USDC."""
+        self._require_stream_escrow()
+        raw = self._retry(lambda: self.stream_escrow.functions.remainingBalance(stream_id).call())
+        return raw / 1_000_000
+
+    def get_my_streams(self, role: str = "client") -> list:
+        """Get all streams for the current account.
+
+        Args:
+            role: "client" or "provider"
+        """
+        self._require_stream_escrow()
+        addr = self.account.address
+        if role == "client":
+            ids = self._retry(lambda: self.stream_escrow.functions.getClientStreams(addr).call())
+        else:
+            ids = self._retry(lambda: self.stream_escrow.functions.getProviderStreams(addr).call())
+        return [self.get_stream(sid) for sid in ids]

@@ -88,3 +88,39 @@ class Pipeline:
     @property
     def total_budget_usdc(self) -> float:
         return self.total_budget / 1e6
+
+
+class StreamStatus(IntEnum):
+    ACTIVE = 0
+    PAUSED = 1
+    COMPLETED = 2
+    CANCELLED = 3
+
+
+@dataclass
+class StreamInfo:
+    stream_id: int
+    client: str
+    provider: str
+    client_agent_id: int
+    provider_agent_id: int
+    currency: str
+    deposit: int
+    withdrawn: int
+    start_time: int
+    end_time: int
+    heartbeat_interval: int
+    last_heartbeat: int
+    missed_beats: int
+    paused_at: int
+    total_paused_time: int
+    status: StreamStatus
+
+    @property
+    def deposit_usdc(self) -> float:
+        return self.deposit / 1e6
+
+    @property
+    def rate_per_second(self) -> float:
+        duration = self.end_time - self.start_time
+        return self.deposit_usdc / duration if duration > 0 else 0

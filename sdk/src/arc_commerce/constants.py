@@ -19,6 +19,9 @@ AGENT_POLICY_ADDRESS = "0xB172b27Af9E084D574817b080C04a7629c606c0E"
 # ERC-8183 (Arc native)
 AGENTIC_COMMERCE_ADDRESS = "0x0747EEf0706327138c69792bF28Cd525089e4583"
 
+# V4 contracts (Arc Testnet)
+STREAM_ESCROW_ADDRESS = ""  # Set after deployment
+
 # Additional tokens
 EURC_ADDRESS = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a"
 
@@ -38,6 +41,7 @@ NETWORKS = {
         "agent_policy": "0xB172b27Af9E084D574817b080C04a7629c606c0E",
         "agentic_commerce": "0x0747EEf0706327138c69792bF28Cd525089e4583",
         "eurc": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+        "stream_escrow": "",  # Set after deployment
     },
 }
 
