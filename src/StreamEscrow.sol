@@ -172,4 +172,149 @@ contract StreamEscrow is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     function getProviderStreams(address provider) external view returns (uint256[] memory) {
         return _providerStreams[provider];
     }
+
+    // ---- Linear Unlock (Task 2) ----
+
+    /// @notice Provider's claimable balance right now
+    function balanceOf(uint256 streamId) public view returns (uint256) {
+        Stream storage s = _streams[streamId];
+        if (s.status == StreamStatus.Cancelled || s.deposit == 0) return 0;
+
+        uint256 elapsed;
+        if (s.status == StreamStatus.Paused) {
+            elapsed = s.pausedAt - s.startTime - s.totalPausedTime;
+        } else {
+            uint256 end = block.timestamp > s.endTime ? s.endTime : block.timestamp;
+            elapsed = end - s.startTime - s.totalPausedTime;
+        }
+
+        uint256 totalDuration = s.endTime - s.startTime - s.totalPausedTime;
+        if (totalDuration == 0) return s.deposit;
+
+        uint256 earned = s.deposit * elapsed / totalDuration;
+        return earned > s.withdrawn ? earned - s.withdrawn : 0;
+    }
+
+    /// @notice Client's unearned remaining balance
+    function remainingBalance(uint256 streamId) public view returns (uint256) {
+        Stream storage s = _streams[streamId];
+        uint256 earned = balanceOf(streamId) + s.withdrawn;
+        return s.deposit > earned ? s.deposit - earned : 0;
+    }
+
+    // ---- Heartbeat + Check + Pause + Resume (Task 3) ----
+
+    function heartbeat(uint256 streamId) external {
+        Stream storage s = _streams[streamId];
+        if (s.provider != msg.sender) revert NotProvider();
+        if (s.status != StreamStatus.Active) revert StreamNotActive();
+        _checkCompletion(streamId);
+        if (s.status != StreamStatus.Active) revert StreamNotActive();
+        s.lastHeartbeat = block.timestamp;
+        s.missedBeats = 0;
+        emit Heartbeat(streamId, block.timestamp);
+    }
+
+    function checkStream(uint256 streamId) external {
+        Stream storage s = _streams[streamId];
+        if (s.status != StreamStatus.Active) return;
+        _checkCompletion(streamId);
+        if (s.status != StreamStatus.Active) return;
+        if (block.timestamp > s.lastHeartbeat + s.heartbeatInterval * 2) {
+            s.status = StreamStatus.Paused;
+            s.pausedAt = block.timestamp;
+            s.missedBeats++;
+            emit StreamPaused(streamId, block.timestamp);
+        }
+    }
+
+    function resume(uint256 streamId) external {
+        Stream storage s = _streams[streamId];
+        if (s.provider != msg.sender) revert NotProvider();
+        if (s.status != StreamStatus.Paused) revert StreamNotPaused();
+        uint256 pausedDuration = block.timestamp - s.pausedAt;
+        s.totalPausedTime += pausedDuration;
+        s.pausedAt = 0;
+        s.lastHeartbeat = block.timestamp;
+        s.missedBeats = 0;
+        s.status = StreamStatus.Active;
+        emit StreamResumed(streamId, pausedDuration);
+    }
+
+    function _checkCompletion(uint256 streamId) internal {
+        Stream storage s = _streams[streamId];
+        if (block.timestamp >= s.endTime && s.status == StreamStatus.Active) {
+            s.status = StreamStatus.Completed;
+            reputationRegistry.giveFeedback(
+                s.providerAgentId, int128(int256(100)), 0,
+                "stream_completed", "", "", "", bytes32(streamId)
+            );
+            emit StreamCompleted(streamId, s.deposit);
+        }
+    }
+
+    // ---- Withdraw (Task 4) ----
+
+    function withdraw(uint256 streamId) external {
+        Stream storage s = _streams[streamId];
+        if (s.provider != msg.sender) revert NotProvider();
+        _checkCompletion(streamId);
+        uint256 claimable = balanceOf(streamId);
+        if (claimable == 0) revert NothingToWithdraw();
+        s.withdrawn += claimable;
+        IERC20(s.currency).safeTransfer(s.provider, claimable);
+        emit Withdrawn(streamId, s.provider, claimable);
+    }
+
+    // ---- Cancel (Task 5) ----
+
+    function cancel(uint256 streamId) external {
+        Stream storage s = _streams[streamId];
+        if (s.client != msg.sender) revert NotClient();
+        if (s.status == StreamStatus.Cancelled) revert StreamNotActive();
+
+        if (s.status == StreamStatus.Paused) {
+            s.totalPausedTime += block.timestamp - s.pausedAt;
+            s.pausedAt = 0;
+        }
+
+        uint256 end = block.timestamp > s.endTime ? s.endTime : block.timestamp;
+        uint256 elapsed = end - s.startTime - s.totalPausedTime;
+        uint256 totalDuration = s.endTime - s.startTime - s.totalPausedTime;
+        uint256 totalEarned = totalDuration > 0 ? s.deposit * elapsed / totalDuration : 0;
+
+        uint256 providerAmount = totalEarned > s.withdrawn ? totalEarned - s.withdrawn : 0;
+        uint256 clientRefund = s.deposit - s.withdrawn - providerAmount;
+
+        s.status = StreamStatus.Cancelled;
+
+        if (providerAmount > 0) {
+            s.withdrawn += providerAmount;
+            IERC20(s.currency).safeTransfer(s.provider, providerAmount);
+        }
+        if (clientRefund > 0) {
+            IERC20(s.currency).safeTransfer(s.client, clientRefund);
+        }
+
+        emit StreamCancelled(streamId, totalEarned, clientRefund);
+    }
+
+    // ---- Top-Up (Task 6) ----
+
+    function topUp(uint256 streamId, uint256 amount) external {
+        Stream storage s = _streams[streamId];
+        if (s.client != msg.sender) revert NotClient();
+        if (s.status != StreamStatus.Active && s.status != StreamStatus.Paused) revert StreamNotActive();
+
+        uint256 totalDuration = s.endTime - s.startTime;
+        uint256 rate = s.deposit / totalDuration;
+        uint256 extension = rate > 0 ? amount / rate : 0;
+
+        s.deposit += amount;
+        s.endTime += extension;
+
+        IERC20(s.currency).safeTransferFrom(msg.sender, address(this), amount);
+
+        emit TopUp(streamId, amount, s.endTime);
+    }
 }
