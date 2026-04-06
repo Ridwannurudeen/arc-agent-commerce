@@ -51,14 +51,14 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
         const j = r.result as any;
         return {
           id: i + 1,
-          client: (j.client ?? j[1]) as string,
-          provider: (j.provider ?? j[2]) as string,
-          evaluator: (j.evaluator ?? j[3]) as string,
-          description: (j.description ?? j[4]) as string,
+          client: (j.client ?? j[1] ?? "") as string,
+          provider: (j.provider ?? j[2] ?? "") as string,
+          evaluator: (j.evaluator ?? j[3] ?? "") as string,
+          description: (j.description ?? j[4] ?? "") as string,
           budget: BigInt(j.budget ?? j[5] ?? 0),
           expiredAt: BigInt(j.expiredAt ?? j[6] ?? 0),
-          status: Number(j.status ?? j[7]),
-          hook: (j.hook ?? j[8]) as string,
+          status: Number(j.status ?? j[7] ?? 0),
+          hook: (j.hook ?? j[8] ?? "") as string,
         };
       })
       .filter((j): j is NonNullable<typeof j> => j !== null)

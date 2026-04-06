@@ -300,8 +300,8 @@ function StreamCard({ streamId, address }: { streamId: number; address: `0x${str
   };
 
   const statusLabel = STREAM_STATUS[s.status] ?? "Unknown";
-  const isClient = address.toLowerCase() === s.client.toLowerCase();
-  const isProvider = address.toLowerCase() === s.provider.toLowerCase();
+  const isClient = address?.toLowerCase() === (s.client ?? "").toLowerCase();
+  const isProvider = address?.toLowerCase() === (s.provider ?? "").toLowerCase();
 
   const now = Math.floor(Date.now() / 1000);
   const startTime = Number(s.startTime);

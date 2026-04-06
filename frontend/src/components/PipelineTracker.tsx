@@ -75,7 +75,7 @@ export function PipelineTracker({ pipelineId }: Props) {
     : undefined;
 
   const stages = (stagesRaw as StageData[] | undefined) ?? [];
-  const isClient = pipeline && address && pipeline.client.toLowerCase() === address.toLowerCase();
+  const isClient = pipeline && address && (pipeline.client ?? "").toLowerCase() === address.toLowerCase();
   const isActive = pipeline?.status === 0;
   const activeStageIndex = pipeline ? Number(pipeline.currentStage) : -1;
   const activeStage = stages[activeStageIndex];

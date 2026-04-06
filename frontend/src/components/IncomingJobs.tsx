@@ -64,8 +64,8 @@ export function IncomingJobs() {
       const stages = r.result as any[];
       for (let s = 0; s < stages.length; s++) {
         const stage = stages[s];
-        const provAddr = (stage.providerAddress ?? stage[1]) as string;
-        if (provAddr.toLowerCase() === address.toLowerCase()) {
+        const provAddr = (stage.providerAddress ?? stage[1] ?? "") as string;
+        if (provAddr && provAddr.toLowerCase() === address.toLowerCase()) {
           result.push({ pipelineId: p, stageIndex: s, stage });
         }
       }

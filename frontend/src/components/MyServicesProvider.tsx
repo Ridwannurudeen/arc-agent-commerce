@@ -51,19 +51,20 @@ export function MyServicesProvider({ onViewAgent }: Props) {
       .map((r, i) => {
         if (r.status !== "success" || !r.result) return null;
         const d = r.result as any[];
+        if (!d || !d[1]) return null;
         return {
           serviceId: i,
-          agentId: Number(d[0]),
-          provider: d[1] as string,
-          capabilityHash: d[2] as string,
+          agentId: Number(d[0] ?? 0),
+          provider: (d[1] ?? "") as string,
+          capabilityHash: (d[2] ?? "") as string,
           pricePerTask: BigInt(d[3] ?? 0),
-          metadataURI: d[4] as string,
+          metadataURI: (d[4] ?? "") as string,
           active: d[5] as boolean,
         };
       })
       .filter(
         (s): s is NonNullable<typeof s> =>
-          s !== null && s.provider.toLowerCase() === address.toLowerCase()
+          s !== null && s.provider && s.provider.toLowerCase() === address!.toLowerCase()
       );
   }, [servicesRaw, address]);
 

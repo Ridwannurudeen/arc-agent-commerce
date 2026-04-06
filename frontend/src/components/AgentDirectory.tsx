@@ -84,7 +84,7 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
     if (id > 0) onViewAgent(id);
   };
 
-  const uniqueOwners = new Set(agents.map((a) => a.owner.toLowerCase())).size;
+  const uniqueOwners = new Set(agents.map((a) => (a.owner ?? "").toLowerCase())).size;
 
   return (
     <div>
