@@ -106,7 +106,7 @@ export function PipelineTracker({ pipelineId }: Props) {
         const job = r.result as any;
         jobStatusMap.set(Number(s.jobId), {
           status: Number(job.status ?? job[7]),
-          budget: BigInt(job.budget ?? job[5]),
+          budget: BigInt(job.budget ?? job[5] ?? 0),
         });
       }
     });

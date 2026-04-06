@@ -55,8 +55,8 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
           provider: (j.provider ?? j[2]) as string,
           evaluator: (j.evaluator ?? j[3]) as string,
           description: (j.description ?? j[4]) as string,
-          budget: BigInt(j.budget ?? j[5]),
-          expiredAt: BigInt(j.expiredAt ?? j[6]),
+          budget: BigInt(j.budget ?? j[5] ?? 0),
+          expiredAt: BigInt(j.expiredAt ?? j[6] ?? 0),
           status: Number(j.status ?? j[7]),
           hook: (j.hook ?? j[8]) as string,
         };

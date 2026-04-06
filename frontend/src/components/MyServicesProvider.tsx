@@ -56,7 +56,7 @@ export function MyServicesProvider({ onViewAgent }: Props) {
           agentId: Number(d[0]),
           provider: d[1] as string,
           capabilityHash: d[2] as string,
-          pricePerTask: BigInt(d[3]),
+          pricePerTask: BigInt(d[3] ?? 0),
           metadataURI: d[4] as string,
           active: d[5] as boolean,
         };

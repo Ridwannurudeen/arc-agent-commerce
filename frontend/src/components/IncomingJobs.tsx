@@ -99,9 +99,9 @@ export function IncomingJobs() {
         stageIndex: s.stageIndex,
         jobId: jobIds[i],
         capabilityHash: (s.stage.capabilityHash ?? s.stage[2]) as string,
-        budget: BigInt(s.stage.budget ?? s.stage[3]),
+        budget: BigInt(s.stage.budget ?? s.stage[3] ?? 0),
         jobStatus: job ? Number(job.status ?? job[7]) : -1,
-        jobBudget: job ? BigInt(job.budget ?? job[5]) : BigInt(0),
+        jobBudget: job ? BigInt(job.budget ?? job[5] ?? 0) : BigInt(0),
       };
     });
   }, [myStages, jobsRaw, jobIds]);
