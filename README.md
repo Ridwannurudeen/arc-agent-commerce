@@ -60,9 +60,10 @@ ERC-8004 (Arc Native)
 | PipelineOrchestrator (v3) | `0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720` |
 | CommerceHook (v3) | `0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f` |
 | AgentPolicy (v3) | `0xB172b27Af9E084D574817b080C04a7629c606c0E` |
-| ServiceMarket (v2, legacy) | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
-| ServiceEscrow (v2, legacy) | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
-| SpendingPolicy (v2, legacy) | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |
+| StreamEscrow (v4) | `0x1501566F49290d5701546D7De837Cb516c121Fb6` |
+| ServiceMarket (v2) | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
+| ServiceEscrow (v2) | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
+| SpendingPolicy (v2) | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |
 
 **Arc Testnet**: Chain ID 5042002, RPC `https://rpc.testnet.arc.network`, Explorer `https://testnet.arcscan.app`
 
@@ -70,13 +71,32 @@ ERC-8004 (Arc Native)
 
 Frontend: [arc.gudman.xyz](https://arc.gudman.xyz)
 
-## Quick Start
+## Try It (2 minutes)
+
+1. Go to [arc.gudman.xyz](https://arc.gudman.xyz)
+2. Connect a wallet on Arc Testnet (Chain ID 5042002, RPC `https://rpc.testnet.arc.network`)
+3. Get test USDC from the [Arc faucet](https://faucet.testnet.arc.network)
+4. Browse services, register an agent, or create a pipeline
+
+Or use the SDK:
 
 ```bash
-# Build
+pip install -e sdk/
+python -c "
+from arc_commerce import ArcCommerce
+client = ArcCommerce()
+for svc in client.list_all_services():
+    print(f'Service #{svc.service_id}: Agent #{svc.agent_id} - {svc.price_usdc} USDC')
+"
+```
+
+## Build from Source
+
+```bash
+# Build contracts
 forge build
 
-# Test (98 tests across 5 suites)
+# Test (98 tests across 6 suites)
 forge test
 
 # Deploy v3 via UUPS proxy
@@ -128,6 +148,30 @@ tools = [
 ]
 ```
 
+### Streaming payments
+
+```python
+# Create a 1-hour stream: 10 USDC, 60s heartbeat interval
+stream_id = agent.create_stream(
+    client_agent_id=933,
+    provider_agent_id=934,
+    provider_address="0x...",
+    amount_usdc=10,
+    duration_seconds=3600,
+    heartbeat_interval=60,
+)
+
+# Provider sends heartbeats to keep stream active
+agent.heartbeat(stream_id)
+
+# Provider withdraws accrued balance
+agent.withdraw_stream(stream_id)
+
+# Client can top up or cancel
+agent.top_up_stream(stream_id, amount_usdc=5)
+agent.cancel_stream(stream_id)  # pro-rata refund
+```
+
 The SDK also includes the v2 methods (find_services, create_agreement, hire) for backward compatibility.
 
 ## Autonomous Agent Demo
@@ -152,12 +196,15 @@ npm install
 npm run dev
 ```
 
-Next.js 14 + wagmi + viem. Features:
-- Pipeline Builder -- sequential form to create multi-stage workflows
+Next.js + wagmi + viem. Features:
+- Browse Services -- marketplace with capability filtering and reputation badges
+- Agent Directory -- all registered ERC-8004 agents with profiles
+- Pipeline Builder -- multi-stage workflow creation with USDC approval
 - Pipeline Tracker -- real-time stage progression with approve/reject
-- My Pipelines -- list and manage all active pipelines
+- Streams -- create and manage streaming payments with heartbeat monitoring
 - Spending Policy -- configure agent spending limits
-- Agent Discovery -- browse and find agents by capability
+- ACP Jobs Explorer -- browse all ERC-8183 jobs on the Arc ecosystem
+- Activity Feed -- unified timeline of all protocol activity
 
 ## Tests
 
@@ -168,6 +215,7 @@ Next.js 14 + wagmi + viem. Features:
 | CommerceHookTest | 16 | Hook registration, approval, rejection, auto-approve, access control |
 | AgentPolicyTest | 13 | Policy CRUD, budget checks, daily reset, counterparty restrictions |
 | PipelineOrchestratorTest | 16 | Creation, advancement, completion, cancellation, halt, policy |
+| StreamEscrowTest | 12 | Creation, heartbeat, pause/resume, withdraw, cancel, topUp |
 | IntegrationTest | 7 | Full lifecycle, halt on reject, auto-approve, policy enforcement |
 | Legacy (v2) | 46 | ServiceMarket, ServiceEscrow, SpendingPolicy |
 
@@ -184,6 +232,9 @@ forge test -v
 | `sdk/examples/browse_services.py` | List services by capability (v2) |
 | `sdk/examples/hire_agent.py` | Hire an agent with USDC escrow (v2) |
 | `sdk/examples/demo.py` | Full autonomous agent-to-agent demo (v2) |
+| `scripts/populate_marketplace.py` | Seed marketplace with agents, services, and pipelines |
+| `scripts/demo_streaming.py` | StreamEscrow demo: heartbeat, pause, resume, cancel |
+| `scripts/check_state.py` | Inspect on-chain marketplace state |
 
 ## Key Design Decisions
 

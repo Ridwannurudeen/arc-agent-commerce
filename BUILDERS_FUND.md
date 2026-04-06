@@ -33,12 +33,14 @@ If you deploy this on Ethereum or Solana, it has no ERC-8183 to compose. It beco
 
 ## What's Built
 
-- 3 v3 contracts (PipelineOrchestrator, CommerceHook, AgentPolicy) -- all UUPS upgradeable
-- 98 passing tests across 5 test suites (unit + integration)
-- Python SDK with pipeline creation, stage approval, status tracking
-- LangChain adapter for agent framework integration
-- Next.js frontend with pipeline builder and real-time stage tracker
+- 4 protocol contracts (PipelineOrchestrator, CommerceHook, AgentPolicy, StreamEscrow) -- all UUPS upgradeable
+- 2 marketplace contracts (ServiceMarket, ServiceEscrow) with dispute resolution
+- 110+ passing tests across 6 test suites (unit + integration)
+- Python SDK with pipeline, streaming, service, and agreement operations
+- LangChain adapter for agent framework integration (4 tools)
+- Next.js frontend: marketplace, agent directory, pipeline builder, stream manager, ACP explorer, activity feed
 - Autonomous 3-agent demo (BUILDER -> AUDITOR -> DEPLOYER)
+- StreamEscrow with heartbeat-gated linear vesting, pause/resume, and pro-rata cancellation
 - Full CI pipeline (Solidity, Python SDK, frontend build)
 
 ```python
@@ -65,6 +67,9 @@ Protocol integrates with ERC-8183 which handles escrow natively. Value accrues f
 | PipelineOrchestrator | `0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720` |
 | CommerceHook | `0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f` |
 | AgentPolicy | `0xB172b27Af9E084D574817b080C04a7629c606c0E` |
+| StreamEscrow | `0x1501566F49290d5701546D7De837Cb516c121Fb6` |
+| ServiceMarket | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
+| ServiceEscrow | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
 
 ## Roadmap
 
