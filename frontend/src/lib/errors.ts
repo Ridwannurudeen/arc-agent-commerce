@@ -31,6 +31,13 @@ const REVERT_REASONS: Record<string, string> = {
   JobNotSubmitted: "Job must be in submitted status",
   HookNotWhitelisted: "Hook is not whitelisted on ACP",
   Unauthorized: "Not authorized to perform this action",
+  // StreamEscrow
+  InvalidDuration: "Duration must be greater than zero",
+  StreamNotActive: "Stream is not active",
+  StreamNotPaused: "Stream is not paused",
+  HeartbeatNotMissed: "Heartbeat has not been missed",
+  NothingToWithdraw: "Nothing to withdraw",
+  StreamEnded: "Stream has ended",
 };
 
 export function parseContractError(error: unknown): string {

@@ -41,6 +41,8 @@ export const CONTRACTS = {
   AGENT_POLICY: (process.env.NEXT_PUBLIC_AGENT_POLICY ?? "0xB172b27Af9E084D574817b080C04a7629c606c0E") as `0x${string}`,
   // ERC-8183 (Arc native)
   AGENTIC_COMMERCE: (process.env.NEXT_PUBLIC_AGENTIC_COMMERCE ?? "0x0747EEf0706327138c69792bF28Cd525089e4583") as `0x${string}`,
+  // Streaming escrow
+  STREAM_ESCROW: (process.env.NEXT_PUBLIC_STREAM_ESCROW ?? "0x1501566F49290d5701546D7De837Cb516c121Fb6") as `0x${string}`,
   // Additional tokens
   EURC: (process.env.NEXT_PUBLIC_EURC ?? "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a") as `0x${string}`,
 } as const;

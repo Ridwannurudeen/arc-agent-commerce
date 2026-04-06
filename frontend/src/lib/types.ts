@@ -10,6 +10,7 @@ export type Tab =
   | "activity"
   | "acp-jobs"
   | "agent-directory"
+  | "streams"
   | "admin";
 
 export type Prefill = {
@@ -67,6 +68,24 @@ export type StageData = {
   budget: bigint;
   jobId: bigint;
   status: number; // 0=Pending, 1=Active, 2=Completed, 3=Failed
+};
+
+export type StreamData = {
+  client: string;
+  provider: string;
+  clientAgentId: bigint;
+  providerAgentId: bigint;
+  currency: string;
+  deposit: bigint;
+  withdrawn: bigint;
+  startTime: bigint;
+  endTime: bigint;
+  heartbeatInterval: bigint;
+  lastHeartbeat: bigint;
+  missedBeats: bigint;
+  pausedAt: bigint;
+  totalPausedTime: bigint;
+  status: number; // 0=Active, 1=Paused, 2=Completed, 3=Cancelled
 };
 
 export type JobData = {

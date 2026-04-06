@@ -15,6 +15,7 @@ import { ActivityFeed } from "@/components/ActivityFeed";
 import { AcpJobsExplorer } from "@/components/AcpJobsExplorer";
 import { AgentDirectory } from "@/components/AgentDirectory";
 import { AdminPanel } from "@/components/AdminPanel";
+import { Streams } from "@/components/Streams";
 import { AgentProfileModal } from "@/components/AgentProfileModal";
 import type { Tab } from "@/lib/types";
 
@@ -58,6 +59,7 @@ export default function Home() {
             />
           )}
           {tab === "my-pipelines" && <MyPipelines />}
+          {tab === "streams" && <Streams />}
           {tab === "spending-policy" && <SpendingPolicyTab />}
           {tab === "activity" && <ActivityFeed onViewAgent={handleViewAgent} />}
           {tab === "acp-jobs" && <AcpJobsExplorer onViewAgent={handleViewAgent} />}

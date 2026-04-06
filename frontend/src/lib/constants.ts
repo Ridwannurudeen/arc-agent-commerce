@@ -25,3 +25,4 @@ export const STATUS_LABELS = ["active", "completed", "disputed", "expired", "res
 export const PIPELINE_STATUS = ["Active", "Completed", "Halted", "Cancelled"];
 export const STAGE_STATUS = ["Pending", "Active", "Completed", "Failed"];
 export const JOB_STATUS = ["Open", "Funded", "Submitted", "Completed", "Rejected", "Expired"];
+export const STREAM_STATUS = ["Active", "Paused", "Completed", "Cancelled"];

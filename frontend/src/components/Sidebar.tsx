@@ -28,6 +28,7 @@ const NAV: NavSection[] = [
     items: [
       { key: "create-pipeline", label: "Create Pipeline" },
       { key: "my-pipelines", label: "My Pipelines" },
+      { key: "streams", label: "Streams" },
       { key: "spending-policy", label: "Spending Policy" },
     ],
   },
