@@ -17,10 +17,12 @@ import { AgentDirectory } from "@/components/AgentDirectory";
 import { AdminPanel } from "@/components/AdminPanel";
 import { Streams } from "@/components/Streams";
 import { AgentProfileModal } from "@/components/AgentProfileModal";
+import { TerminalToggle } from "@/components/TerminalToggle";
 import type { Tab } from "@/lib/types";
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("marketplace");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [pipelinePrefill, setPipelinePrefill] = useState<{
     agentId: number;
@@ -41,10 +43,15 @@ export default function Home() {
 
   return (
     <>
-      <Header />
+      <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <NetworkBanner />
       <div className="app-layout">
-        <Sidebar activeTab={tab} onNavigate={setTab} />
+        <Sidebar
+          activeTab={tab}
+          onNavigate={setTab}
+          mobileOpen={sidebarOpen}
+          onMobileClose={() => setSidebarOpen(false)}
+        />
         <main className="main-content">
           {tab === "marketplace" && (
             <Marketplace onViewAgent={handleViewAgent} onHire={handleHire} />
@@ -75,6 +82,8 @@ export default function Home() {
           onHire={handleHire}
         />
       )}
+
+      <TerminalToggle />
     </>
   );
 }

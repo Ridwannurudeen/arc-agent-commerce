@@ -7,15 +7,38 @@ import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { capabilityName } from "@/lib/constants";
 import { formatUnits } from "viem";
-import { Skeleton } from "@/components/Skeleton";
+import { SkeletonGrid } from "@/components/Skeleton";
+import { motion } from "framer-motion";
+import { Search, CheckCircle2, PackageSearch } from "lucide-react";
 
 type Props = {
   onViewAgent: (agentId: number) => void;
   onHire: (agentId: number, provider: string, capability: string, price: bigint) => void;
 };
 
+function agentColor(id: number): string {
+  const colors = ['#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316', '#22c55e'];
+  return colors[id % colors.length];
+}
+
+function agentInitials(id: number): string {
+  return `A${id}`;
+}
+
+const FILTER_TAGS: { label: string; match: (cap: string) => boolean }[] = [
+  { label: "All", match: () => true },
+  { label: "Audit", match: (c) => c.includes("audit") },
+  { label: "Security", match: (c) => c.includes("security") },
+  { label: "Deploy", match: (c) => c.includes("deploy") },
+  { label: "Monitor", match: (c) => c.includes("monitor") },
+  { label: "Testing", match: (c) => c.includes("test") },
+  { label: "Consulting", match: (c) => c.includes("consult") },
+];
+
 export function Marketplace({ onViewAgent, onHire }: Props) {
   const [selectedCapability, setSelectedCapability] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState(0);
 
   const { data: nextId, isError: serviceError } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
@@ -75,6 +98,13 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
     return map;
   }, [jobsRaw]);
 
+  // Count total completed jobs
+  const completedJobs = useMemo(() => {
+    let count = 0;
+    providerStats.forEach((s) => { count += s.completed; });
+    return count;
+  }, [providerStats]);
+
   const services = useMemo(() => {
     if (!servicesRaw) return [];
     return servicesRaw
@@ -94,6 +124,13 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
       .filter((s): s is NonNullable<typeof s> => s !== null && s.active);
   }, [servicesRaw]);
 
+  // Unique agent count
+  const uniqueAgents = useMemo(() => {
+    const ids = new Set<number>();
+    services.forEach((s) => ids.add(s.agentId));
+    return ids.size;
+  }, [services]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, typeof services>();
     for (const s of services) {
@@ -104,124 +141,217 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
     return map;
   }, [services]);
 
-  const filtered =
-    selectedCapability === "all"
-      ? services
-      : services.filter((s) => s.capabilityHash.toLowerCase() === selectedCapability);
+  // Count services per filter tag
+  const tagCounts = useMemo(() => {
+    return FILTER_TAGS.map((tag) => {
+      if (tag.label === "All") return services.length;
+      return services.filter((s) => {
+        const name = capabilityName(s.capabilityHash).toLowerCase();
+        return tag.match(name);
+      }).length;
+    });
+  }, [services]);
+
+  // Apply tag + search filtering
+  const filtered = useMemo(() => {
+    let result = services;
+
+    // Capability filter (legacy dropdown)
+    if (selectedCapability !== "all") {
+      result = result.filter((s) => s.capabilityHash.toLowerCase() === selectedCapability);
+    }
+
+    // Tag filter
+    if (activeTag > 0) {
+      const tag = FILTER_TAGS[activeTag];
+      result = result.filter((s) => {
+        const name = capabilityName(s.capabilityHash).toLowerCase();
+        return tag.match(name);
+      });
+    }
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((s) => {
+        const name = capabilityName(s.capabilityHash).toLowerCase();
+        const agentStr = `agent #${s.agentId}`.toLowerCase();
+        const addr = s.provider.toLowerCase();
+        return name.includes(q) || agentStr.includes(q) || addr.includes(q);
+      });
+    }
+
+    return result;
+  }, [services, selectedCapability, activeTag, searchQuery]);
 
   const isError = serviceError || batchError;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h2>Agent Marketplace</h2>
-        <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-          {services.length} active services across {grouped.size} capabilities
-        </span>
+      {/* ── Bento Grid Stats ── */}
+      <div className="bento-grid">
+        <div className="bento-card">
+          <div className="label">Services Listed</div>
+          <div className="value">{services.length}</div>
+        </div>
+        <div className="bento-card">
+          <div className="label">Agents Active</div>
+          <div className="value">{uniqueAgents}</div>
+        </div>
+        <div className="bento-card">
+          <div className="label">Jobs Completed</div>
+          <div className="value">{completedJobs}</div>
+        </div>
+        <div className="bento-card">
+          <div className="label">Network</div>
+          <div className="value" style={{ display: "flex", alignItems: "center", fontSize: "1rem" }}>
+            <span className="status-dot green" />
+            Arc Testnet
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
-        <button
-          className={`btn-sm ${selectedCapability === "all" ? "" : "btn-outline"}`}
-          onClick={() => setSelectedCapability("all")}
-          style={selectedCapability === "all" ? { background: "var(--accent)", color: "#fff" } : {}}
-        >
-          All ({services.length})
-        </button>
-        {Array.from(grouped.entries()).map(([hash, svcs]) => (
+      {/* ── Floating Search Bar ── */}
+      <div className="search-floating">
+        <Search size={18} className="search-icon" />
+        <input
+          type="text"
+          placeholder="Search agents by capability..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* ── Quick Filter Tags ── */}
+      <div className="quick-filters">
+        {FILTER_TAGS.map((tag, i) => (
           <button
-            key={hash}
-            className={`btn-sm ${selectedCapability === hash ? "" : "btn-outline"}`}
-            onClick={() => setSelectedCapability(hash)}
-            style={selectedCapability === hash ? { background: "var(--accent)", color: "#fff" } : {}}
+            key={tag.label}
+            className={`quick-filter${activeTag === i ? " active" : ""}`}
+            onClick={() => {
+              setActiveTag(i);
+              setSelectedCapability("all");
+            }}
           >
-            {capabilityName(hash)} ({svcs.length})
+            #{tag.label} ({tagCounts[i]})
           </button>
         ))}
       </div>
 
-      {isLoading && <Skeleton />}
+      {/* ── Loading State ── */}
+      {isLoading && <SkeletonGrid count={6} />}
 
+      {/* ── Error State ── */}
       {isError && !isLoading && (
         <div className="warning-banner" style={{ marginBottom: "1rem" }}>
           Failed to load marketplace data. Check your network connection or switch to Arc Testnet.
         </div>
       )}
 
+      {/* ── Empty State ── */}
       {!isLoading && !isError && filtered.length === 0 && (
-        <div className="card" style={{ textAlign: "center", padding: "3rem" }}>
-          <p style={{ color: "var(--text-dim)", marginBottom: "0.5rem" }}>
-            {selectedCapability === "all"
-              ? "No agents available yet."
-              : `No agents offering ${capabilityName(selectedCapability)}.`}
+        <div className="empty-state">
+          <PackageSearch size={48} className="empty-icon" />
+          <p>
+            {searchQuery
+              ? `No agents match "${searchQuery}".`
+              : activeTag > 0
+                ? `No agents offering ${FILTER_TAGS[activeTag].label} services.`
+                : "No agents available yet."}
           </p>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>
-            {selectedCapability === "all"
-              ? "Be the first — register your agent in the Provider section."
-              : "Try a different capability or browse all services."}
+          <p className="secondary">
+            {searchQuery || activeTag > 0
+              ? "Try a different search or browse all services."
+              : "Be the first -- register your agent in the Provider section."}
           </p>
         </div>
       )}
 
-      <div style={{ display: "grid", gap: "0.75rem" }}>
-        {filtered.map((s) => {
-          const stats = providerStats.get(s.provider.toLowerCase());
-          return (
-            <div
-              key={s.serviceId}
-              className="card"
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem" }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
-                  <button className="agent-link" onClick={() => onViewAgent(s.agentId)} style={{ fontWeight: 600, background: "none", border: "none", padding: 0 }}>
-                    Agent #{s.agentId}
-                  </button>
-                  <span className="status active" style={{ fontSize: "0.75rem" }}>
-                    {capabilityName(s.capabilityHash)}
+      {/* ── Service Card Grid ── */}
+      {!isLoading && !isError && filtered.length > 0 && (
+        <div className="service-grid">
+          {filtered.map((s) => {
+            const stats = providerStats.get(s.provider.toLowerCase());
+            const isVerified = (stats?.completed ?? 0) >= 3;
+            const priceFormatted = formatUnits(s.pricePerTask, 6);
+
+            return (
+              <motion.div
+                key={s.serviceId}
+                className="service-card"
+                whileHover={{ y: -4, borderColor: "rgba(59, 130, 246, 0.5)" }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+                {/* Card Header */}
+                <div className="service-card-header">
+                  <div
+                    className="agent-avatar"
+                    style={{ background: agentColor(s.agentId) }}
+                  >
+                    {agentInitials(s.agentId)}
+                  </div>
+                  <div className="service-card-info">
+                    <div className="capability-name">
+                      {capabilityName(s.capabilityHash)}
+                    </div>
+                    <div className="agent-id-row">
+                      <button
+                        className="agent-link"
+                        onClick={() => onViewAgent(s.agentId)}
+                        style={{ background: "none", border: "none", padding: 0, fontSize: "0.82rem" }}
+                      >
+                        Agent #{s.agentId}
+                      </button>
+                      {isVerified && (
+                        <CheckCircle2 size={14} className="verified" />
+                      )}
+                      {stats && stats.total > 0 && (
+                        <span style={{
+                          fontSize: "0.68rem",
+                          padding: "0.1rem 0.35rem",
+                          borderRadius: "4px",
+                          background: stats.completed === stats.total
+                            ? "rgba(34, 197, 94, 0.15)"
+                            : "rgba(234, 179, 8, 0.15)",
+                          color: stats.completed === stats.total
+                            ? "var(--green)"
+                            : "var(--yellow)",
+                          fontWeight: 600,
+                        }}>
+                          {stats.completed}/{stats.total}
+                        </span>
+                      )}
+                    </div>
+                    <div className="meta-line">
+                      {s.provider.slice(0, 6)}...{s.provider.slice(-4)}
+                    </div>
+                    {s.metadataURI && (
+                      <div className="meta-line">
+                        {s.metadataURI.length > 40
+                          ? s.metadataURI.slice(0, 40) + "..."
+                          : s.metadataURI}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                <div className="service-card-footer">
+                  <span className="price-pill">
+                    ${priceFormatted} USDC
                   </span>
-                  {stats && stats.total > 0 && (
-                    <span style={{
-                      fontSize: "0.7rem",
-                      padding: "0.15rem 0.4rem",
-                      borderRadius: "4px",
-                      background: stats.completed === stats.total ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
-                      color: stats.completed === stats.total ? "var(--green)" : "var(--yellow)",
-                      fontWeight: 600,
-                    }}>
-                      {stats.completed}/{stats.total} jobs
-                    </span>
-                  )}
+                  <button
+                    className="btn-hire"
+                    onClick={() => onHire(s.agentId, s.provider, s.capabilityHash, s.pricePerTask)}
+                  >
+                    Hire
+                  </button>
                 </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
-                  {s.provider.slice(0, 6)}...{s.provider.slice(-4)}
-                  {s.metadataURI && (
-                    <>
-                      {" "}
-                      &middot; {s.metadataURI.length > 50 ? s.metadataURI.slice(0, 50) + "..." : s.metadataURI}
-                    </>
-                  )}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <span style={{ fontWeight: 600, fontSize: "1rem" }}>
-                  {formatUnits(s.pricePerTask, 6)} USDC
-                </span>
-                <button className="btn-sm btn-outline" onClick={() => onViewAgent(s.agentId)}>
-                  Profile
-                </button>
-                <button
-                  className="btn-sm"
-                  style={{ background: "var(--accent)", color: "#fff" }}
-                  onClick={() => onHire(s.agentId, s.provider, s.capabilityHash, s.pricePerTask)}
-                >
-                  Hire
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

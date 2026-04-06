@@ -5,8 +5,9 @@ import { injected } from "wagmi/connectors";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { arcTestnet } from "@/config";
 import { useTheme } from "@/context/ThemeContext";
+import { MobileSidebarToggle } from "@/components/Sidebar";
 
-export function Header() {
+export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const { address, isConnected, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
@@ -17,11 +18,16 @@ export function Header() {
   const isWrongChain = isConnected && chain?.id !== arcTestnet.id;
 
   return (
-    <header>
-      <h1>
-        Agent Commerce <span>Protocol</span>
-      </h1>
-      <div className="flex-row">
+    <header className="header-glass">
+      <div className="header-left">
+        {onMenuToggle && <MobileSidebarToggle onClick={onMenuToggle} />}
+        <h1 className="header-title">
+          <span className="header-title-primary">Agent Commerce</span>{" "}
+          <span className="header-title-accent">Protocol</span>
+        </h1>
+      </div>
+
+      <div className="header-right">
         <button
           className="btn btn-outline btn-sm"
           onClick={toggleTheme}
@@ -30,9 +36,12 @@ export function Header() {
         >
           {theme === "dark" ? "Light" : "Dark"}
         </button>
-        <span className="addr" style={{ fontSize: "0.7rem" }}>
+
+        <span className="network-badge">
+          <span className="network-dot" />
           Arc Testnet
         </span>
+
         {isConnected ? (
           <div className="flex-row">
             {isWrongChain ? (
@@ -46,14 +55,17 @@ export function Header() {
             ) : (
               <>
                 {usdcBalance !== null && (
-                  <span className="usdc-balance">{usdcBalance} USDC</span>
+                  <span className="usdc-pill">{usdcBalance} USDC</span>
                 )}
-                <span className="addr">
+                <span className="header-addr">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
               </>
             )}
-            <button className="btn btn-outline btn-sm" onClick={() => disconnect()}>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => disconnect()}
+            >
               Disconnect
             </button>
           </div>
