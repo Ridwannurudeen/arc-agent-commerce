@@ -19,6 +19,7 @@ import { Streams } from "@/components/Streams";
 import { AgentProfileModal } from "@/components/AgentProfileModal";
 import { TerminalToggle } from "@/components/TerminalToggle";
 import { LandingHero } from "@/components/LandingHero";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { Tab } from "@/lib/types";
 
 export default function Home() {
@@ -58,7 +59,7 @@ export default function Home() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       <NetworkBanner />
       <div className="app-layout">
@@ -100,6 +101,6 @@ export default function Home() {
       )}
 
       <TerminalToggle />
-    </>
+    </ErrorBoundary>
   );
 }
