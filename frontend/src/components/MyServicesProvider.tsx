@@ -64,7 +64,7 @@ export function MyServicesProvider({ onViewAgent }: Props) {
       })
       .filter(
         (s): s is NonNullable<typeof s> =>
-          s !== null && s.provider && s.provider.toLowerCase() === address!.toLowerCase()
+          s !== null && !!s.provider && s.provider.toLowerCase() === address!.toLowerCase()
       );
   }, [servicesRaw, address]);
 
