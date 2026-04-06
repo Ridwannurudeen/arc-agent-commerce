@@ -7,8 +7,18 @@ import { CONTRACTS, arcTestnet } from "@/config";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { JOB_STATUS } from "@/lib/constants";
 import { Skeleton } from "@/components/Skeleton";
+import { motion } from "framer-motion";
+import { Briefcase, CircleDollarSign, PackageSearch } from "lucide-react";
 
 const PAGE_SIZE = 20;
+
+function jobPillClass(status: number) {
+  if (status === 3) return "pill-green"; // Completed
+  if (status === 4) return "pill-red";   // Rejected
+  if (status === 1) return "pill-blue";  // Funded
+  if (status === 2) return "pill-yellow"; // Submitted
+  return "pill-gray"; // Open
+}
 
 export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number) => void }) {
   const [statusFilter, setStatusFilter] = useState<number | "all">("all");
@@ -23,7 +33,6 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
 
   const jobCounter = Number(jobCounterRaw ?? 0);
 
-  // Batch-read all jobs (47 is small enough)
   const { data: jobsRaw, isLoading } = useReadContracts({
     contracts: Array.from({ length: jobCounter }, (_, i) => ({
       address: CONTRACTS.AGENTIC_COMMERCE as `0x${string}`,
@@ -53,14 +62,12 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
         };
       })
       .filter((j): j is NonNullable<typeof j> => j !== null)
-      .reverse(); // newest first
+      .reverse();
   }, [jobsRaw]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<number, number> = {};
-    for (const j of jobs) {
-      counts[j.status] = (counts[j.status] || 0) + 1;
-    }
+    for (const j of jobs) counts[j.status] = (counts[j.status] || 0) + 1;
     return counts;
   }, [jobs]);
 
@@ -73,28 +80,24 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h2>ACP Jobs — Live Ecosystem</h2>
-        <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-          {jobCounter} jobs on Arc Testnet
-        </span>
+      <div className="section-header">
+        <h2>ACP Jobs Explorer</h2>
+        <p className="section-subtitle">{jobCounter} jobs on Arc Testnet -- live ecosystem view</p>
       </div>
 
       {/* Status filter */}
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
+      <div className="quick-filters" style={{ marginBottom: "1.25rem" }}>
         <button
-          className={`btn-sm ${statusFilter === "all" ? "" : "btn-outline"}`}
+          className={`quick-filter ${statusFilter === "all" ? "active" : ""}`}
           onClick={() => { setStatusFilter("all"); setPage(0); }}
-          style={statusFilter === "all" ? { background: "var(--accent)", color: "#fff" } : {}}
         >
           All ({jobs.length})
         </button>
         {[3, 1, 0, 2, 4].map((s) => (
           <button
             key={s}
-            className={`btn-sm ${statusFilter === s ? "" : "btn-outline"}`}
+            className={`quick-filter ${statusFilter === s ? "active" : ""}`}
             onClick={() => { setStatusFilter(s); setPage(0); }}
-            style={statusFilter === s ? { background: "var(--accent)", color: "#fff" } : {}}
           >
             {JOB_STATUS[s]} ({statusCounts[s] || 0})
           </button>
@@ -104,62 +107,66 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
       {isLoading && <Skeleton />}
 
       {!isLoading && pageJobs.length === 0 && (
-        <div className="card" style={{ textAlign: "center", padding: "3rem" }}>
-          <p style={{ color: "var(--text-dim)" }}>No jobs found.</p>
+        <div className="empty-state">
+          <PackageSearch size={40} className="empty-icon" />
+          <p>No jobs found</p>
+          <p className="secondary">Try a different filter or check back later</p>
         </div>
       )}
 
-      <div style={{ display: "grid", gap: "0.75rem" }}>
-        {pageJobs.map((j) => (
-          <div key={j.id} className="card" style={{ padding: "1rem 1.25rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
-                  <span style={{ fontWeight: 600 }}>Job #{j.id}</span>
-                  {j.budget > BigInt(0) && (
-                    <span style={{ fontWeight: 600, color: "var(--accent)" }}>
-                      {formatUnits(j.budget, 6)} USDC
-                    </span>
-                  )}
-                </div>
-                {j.description && (
-                  <div style={{ fontSize: "0.85rem", marginBottom: "0.35rem", color: "var(--text)" }}>
-                    {j.description.length > 120 ? j.description.slice(0, 120) + "..." : j.description}
-                  </div>
-                )}
-                <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                  <span>Client: {addr(j.client)}</span>
-                  <span>Provider: {addr(j.provider)}</span>
-                  {!isZeroAddr(j.evaluator) && j.evaluator.toLowerCase() !== j.client.toLowerCase() && (
-                    <span>Evaluator: {addr(j.evaluator)}</span>
-                  )}
-                  {!isZeroAddr(j.hook) && <span>Hook: {addr(j.hook)}</span>}
-                </div>
+      <div className="job-grid">
+        {pageJobs.map((j, idx) => (
+          <motion.div
+            key={j.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15, delay: idx * 0.02 }}
+            className="glass-card"
+            style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Briefcase size={15} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>Job #{j.id}</span>
               </div>
-              <span
-                className={`status ${
-                  j.status === 3 ? "completed" : j.status === 4 ? "expired" : "active"
-                }`}
-              >
+              <span className={`pill ${jobPillClass(j.status)}`}>
                 {JOB_STATUS[j.status] ?? "Unknown"}
               </span>
             </div>
-          </div>
+
+            {j.description && (
+              <div style={{ fontSize: "0.82rem", color: "var(--text)", lineHeight: 1.4 }}>
+                {j.description.length > 100 ? j.description.slice(0, 100) + "..." : j.description}
+              </div>
+            )}
+
+            {j.budget > BigInt(0) && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                <CircleDollarSign size={14} style={{ color: "var(--green)" }} />
+                <span style={{ fontWeight: 600, color: "var(--green)", fontSize: "0.85rem" }}>
+                  {formatUnits(j.budget, 6)} USDC
+                </span>
+              </div>
+            )}
+
+            <div style={{ fontSize: "0.72rem", color: "var(--text-dim)", display: "flex", gap: "0.75rem", flexWrap: "wrap", marginTop: "auto", paddingTop: "0.35rem", borderTop: "1px solid var(--border)" }}>
+              <span>Client: {addr(j.client)}</span>
+              <span>Provider: {addr(j.provider)}</span>
+              {!isZeroAddr(j.evaluator) && j.evaluator.toLowerCase() !== j.client.toLowerCase() && (
+                <span>Evaluator: {addr(j.evaluator)}</span>
+              )}
+              {!isZeroAddr(j.hook) && <span>Hook: {addr(j.hook)}</span>}
+            </div>
+          </motion.div>
         ))}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "1rem" }}>
-          <button className="btn-sm btn-outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Prev
-          </button>
-          <span style={{ fontSize: "0.85rem", color: "var(--text-dim)", lineHeight: "32px" }}>
-            {page + 1} / {totalPages}
-          </span>
-          <button className="btn-sm btn-outline" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-            Next
-          </button>
+        <div className="pagination">
+          <button disabled={page === 0} onClick={() => setPage(page - 1)}>Prev</button>
+          <span className="page-info">{page + 1} / {totalPages}</span>
+          <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Next</button>
         </div>
       )}
     </div>

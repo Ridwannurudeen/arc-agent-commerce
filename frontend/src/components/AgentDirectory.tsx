@@ -5,8 +5,15 @@ import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACTS, arcTestnet } from "@/config";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import { Skeleton } from "@/components/Skeleton";
+import { motion } from "framer-motion";
+import { Users, Search, ExternalLink, PackageSearch } from "lucide-react";
 
 const PAGE_SIZE = 25;
+
+function agentColor(id: number): string {
+  const colors = ['#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316', '#22c55e'];
+  return colors[id % colors.length];
+}
 
 type AgentInfo = {
   id: number;
@@ -18,7 +25,6 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
   const [page, setPage] = useState(0);
   const [searchId, setSearchId] = useState("");
 
-  // Read total agent count dynamically from contract
   const { data: totalSupplyRaw } = useReadContract({
     address: CONTRACTS.IDENTITY_REGISTRY,
     abi: IdentityRegistryABI,
@@ -28,12 +34,10 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
 
   const totalAgents = Number(totalSupplyRaw ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalAgents / PAGE_SIZE));
-  // Show newest first: page 0 = agents MAX..MAX-PAGE_SIZE
   const startId = totalAgents - page * PAGE_SIZE;
   const endId = Math.max(1, startId - PAGE_SIZE + 1);
   const ids = startId > 0 ? Array.from({ length: startId - endId + 1 }, (_, i) => startId - i) : [];
 
-  // Batch read ownerOf for this page
   const { data: ownersRaw, isLoading: loadingOwners } = useReadContracts({
     contracts: ids.map((id) => ({
       address: CONTRACTS.IDENTITY_REGISTRY as `0x${string}`,
@@ -45,7 +49,6 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
     query: { enabled: ids.length > 0 },
   });
 
-  // Batch read tokenURI for this page
   const { data: urisRaw, isLoading: loadingURIs } = useReadContracts({
     contracts: ids.map((id) => ({
       address: CONTRACTS.IDENTITY_REGISTRY as `0x${string}`,
@@ -78,99 +81,98 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
 
   const handleSearch = () => {
     const id = parseInt(searchId);
-    if (id > 0) {
-      onViewAgent(id);
-    }
+    if (id > 0) onViewAgent(id);
   };
 
-  // Count unique owners on this page
   const uniqueOwners = new Set(agents.map((a) => a.owner.toLowerCase())).size;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h2>Agent Directory — Arc Ecosystem</h2>
-        <span style={{ color: "var(--text-dim)", fontSize: "0.85rem" }}>
-          {totalAgents} agents registered
-        </span>
+      <div className="section-header">
+        <h2>Agent Directory</h2>
+        <p className="section-subtitle">{totalAgents} agents registered on Arc Ecosystem</p>
       </div>
 
       {/* Search */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+      <div className="search-floating" style={{ marginBottom: "1.25rem" }}>
+        <Search size={16} className="search-icon" />
         <input
           type="number"
           placeholder="Search by Agent ID..."
           value={searchId}
           onChange={(e) => setSearchId(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          style={{
-            padding: "0.5rem 0.75rem",
-            background: "var(--bg)",
-            border: "1px solid var(--border)",
-            borderRadius: "6px",
-            color: "var(--text)",
-            fontSize: "0.85rem",
-            width: "200px",
-          }}
         />
-        <button className="btn-sm" onClick={handleSearch}>
-          View Profile
-        </button>
       </div>
 
       {isLoading && <Skeleton />}
 
       {!isLoading && totalAgents > 0 && (
-        <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: "0.75rem" }}>
-          Showing agents #{startId} – #{endId} &middot; {uniqueOwners} unique owners on this page
+        <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
+          Showing agents #{startId} -- #{endId} &middot; {uniqueOwners} unique owners on this page
         </div>
       )}
 
-      <div style={{ display: "grid", gap: "0.5rem" }}>
-        {agents.map((a) => (
-          <div
+      <div className="agent-grid">
+        {agents.map((a, idx) => (
+          <motion.div
             key={a.id}
-            className="card"
-            style={{
-              padding: "0.75rem 1rem",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-            }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15, delay: idx * 0.02 }}
+            className="glass-card"
+            style={{ cursor: "pointer", display: "flex", flexDirection: "column", gap: "0.5rem" }}
             onClick={() => onViewAgent(a.id)}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <span style={{ fontWeight: 600, minWidth: "80px" }}>Agent #{a.id}</span>
-              <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
-                Owner: {addr(a.owner)}
-              </span>
-              {a.tokenURI && (
-                <span style={{ fontSize: "0.75rem", color: "var(--accent)" }}>
-                  {a.tokenURI.startsWith("ipfs://") ? "IPFS" :
-                   a.tokenURI.startsWith("arc://") ? a.tokenURI.replace("arc://agent/", "") :
-                   a.tokenURI.length > 30 ? a.tokenURI.slice(0, 30) + "..." : a.tokenURI}
-                </span>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+              <div
+                className="agent-avatar"
+                style={{ background: agentColor(a.id), width: 36, height: 36, minWidth: 36, fontSize: "0.65rem" }}
+              >
+                A{a.id}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>Agent #{a.id}</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-dim)", fontFamily: "monospace" }}>
+                  {addr(a.owner)}
+                </div>
+              </div>
             </div>
-            <button className="btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); onViewAgent(a.id); }}>
-              Profile
-            </button>
-          </div>
+
+            {a.tokenURI && (
+              <div style={{ fontSize: "0.72rem", color: "var(--accent)", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                <ExternalLink size={11} />
+                {a.tokenURI.startsWith("ipfs://") ? "IPFS" :
+                 a.tokenURI.startsWith("arc://") ? a.tokenURI.replace("arc://agent/", "") :
+                 a.tokenURI.length > 25 ? a.tokenURI.slice(0, 25) + "..." : a.tokenURI}
+              </div>
+            )}
+
+            <div style={{ marginTop: "auto", paddingTop: "0.35rem", borderTop: "1px solid var(--border)" }}>
+              <button
+                className="btn-sm btn-outline"
+                style={{ width: "100%", fontSize: "0.75rem" }}
+                onClick={(e) => { e.stopPropagation(); onViewAgent(a.id); }}
+              >
+                View Profile
+              </button>
+            </div>
+          </motion.div>
         ))}
       </div>
 
+      {!isLoading && agents.length === 0 && (
+        <div className="empty-state">
+          <PackageSearch size={40} className="empty-icon" />
+          <p>No agents found</p>
+        </div>
+      )}
+
       {/* Pagination */}
-      <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", marginTop: "1rem" }}>
-        <button className="btn-sm btn-outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
-          Newer
-        </button>
-        <span style={{ fontSize: "0.85rem", color: "var(--text-dim)", lineHeight: "32px" }}>
-          Page {page + 1} / {totalPages}
-        </span>
-        <button className="btn-sm btn-outline" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>
-          Older
-        </button>
+      <div className="pagination">
+        <button disabled={page === 0} onClick={() => setPage(page - 1)}>Newer</button>
+        <span className="page-info">Page {page + 1} / {totalPages}</span>
+        <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)}>Older</button>
       </div>
     </div>
   );

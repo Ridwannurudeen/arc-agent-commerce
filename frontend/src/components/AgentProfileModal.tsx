@@ -10,12 +10,19 @@ import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { capabilityName, STAGE_STATUS, JOB_STATUS } from "@/lib/constants";
 import type { ServiceData } from "@/lib/types";
+import { motion } from "framer-motion";
+import { X, User, ShoppingBag, Star, Briefcase, ExternalLink, CircleDollarSign, CheckCircle2, XCircle } from "lucide-react";
 
 type Props = {
   agentId: number;
   onClose: () => void;
   onHire: (agentId: number, provider: string, capability: string, price: bigint) => void;
 };
+
+function agentColor(id: number): string {
+  const colors = ['#3b82f6', '#06b6d4', '#8b5cf6', '#ec4899', '#f97316', '#22c55e'];
+  return colors[id % colors.length];
+}
 
 function AgentServices({ agentId, onHire }: { agentId: number; onHire: Props["onHire"] }) {
   const { data: serviceIds } = useReadContract({
@@ -29,11 +36,15 @@ function AgentServices({ agentId, onHire }: { agentId: number; onHire: Props["on
   const ids = (serviceIds as bigint[]) ?? [];
 
   if (ids.length === 0) {
-    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>No services listed.</div>;
+    return (
+      <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", padding: "0.5rem 0" }}>
+        No services listed.
+      </div>
+    );
   }
 
   return (
-    <div>
+    <div style={{ display: "grid", gap: "0.5rem" }}>
       {ids.map((sid) => (
         <AgentServiceRow key={sid.toString()} serviceId={Number(sid)} agentId={agentId} onHire={onHire} />
       ))}
@@ -54,19 +65,19 @@ function AgentServiceRow({ serviceId, agentId, onHire }: { serviceId: number; ag
   const svc = data as unknown as ServiceData;
 
   return (
-    <div className="service-item" style={{ marginBottom: "0.5rem" }}>
-      <div className="info">
-        <h4>
-          {capabilityName(svc.capabilityHash)}
-          {!svc.active && <span className="status expired" style={{ marginLeft: "0.5rem" }}>INACTIVE</span>}
-        </h4>
-        <div className="meta">Service #{serviceId}</div>
+    <div className="glass-card" style={{ padding: "0.75rem 1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.15rem" }}>
+          <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{capabilityName(svc.capabilityHash)}</span>
+          {!svc.active && <span className="pill pill-red">Inactive</span>}
+        </div>
+        <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Service #{serviceId}</div>
       </div>
-      <div className="flex-row">
-        <div className="price">{formatUnits(svc.pricePerTask, 6)} USDC</div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+        <span className="price-pill">{formatUnits(svc.pricePerTask, 6)} USDC</span>
         {svc.active && (
           <button
-            className="btn btn-sm"
+            className="btn-hire"
             onClick={() => onHire(agentId, svc.provider, svc.capabilityHash, svc.pricePerTask)}
           >
             Hire
@@ -78,7 +89,6 @@ function AgentServiceRow({ serviceId, agentId, onHire }: { serviceId: number; ag
 }
 
 function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: string | undefined }) {
-  // Pipeline stages
   const { data: nextPipelineId } = useReadContract({
     address: CONTRACTS.PIPELINE_ORCHESTRATOR,
     abi: PipelineOrchestratorABI,
@@ -99,7 +109,6 @@ function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: s
     query: { enabled: pipelineCount > 0 },
   });
 
-  // ACP jobs for reputation
   const { data: jobCounterRaw } = useReadContract({
     address: CONTRACTS.AGENTIC_COMMERCE,
     abi: AgenticCommerceABI as any,
@@ -128,7 +137,6 @@ function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: s
     let acpRejected = 0;
     let acpTotal = 0;
 
-    // Pipeline stages
     if (stagesRaw) {
       for (const r of stagesRaw) {
         if (r.status !== "success" || !r.result) continue;
@@ -143,7 +151,6 @@ function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: s
       }
     }
 
-    // ACP jobs where owner is provider
     if (jobsRaw && ownerAddr) {
       const ownerLower = ownerAddr.toLowerCase();
       for (const r of jobsRaw) {
@@ -153,8 +160,8 @@ function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: s
         if (provider !== ownerLower) continue;
         acpTotal++;
         const status = Number(j.status ?? j[7] ?? 0);
-        if (status === 3) acpCompleted++; // Completed
-        if (status === 4) acpRejected++; // Rejected
+        if (status === 3) acpCompleted++;
+        if (status === 4) acpRejected++;
       }
     }
 
@@ -166,34 +173,33 @@ function AgentReputation({ agentId, ownerAddr }: { agentId: number; ownerAddr: s
   }, [stagesRaw, jobsRaw, agentId, ownerAddr]);
 
   if (stats.total === 0) {
-    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>No on-chain history yet.</div>;
+    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", padding: "0.5rem 0" }}>No on-chain history yet.</div>;
   }
 
   return (
     <div>
-      <div style={{ display: "flex", gap: "1.5rem", marginBottom: "0.75rem" }}>
-        <div>
-          <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>
-            {stats.score}
-            <span className={`reputation-score ${stats.score >= 0 ? "positive" : "negative"}`} style={{ marginLeft: "0.5rem" }}>
-              {stats.score >= 0 ? "+" : ""}{stats.score}
-            </span>
+      {/* Stats grid */}
+      <div className="profile-stats">
+        <div className="profile-stat-card">
+          <div className="stat-value" style={{ color: stats.score >= 0 ? "var(--green)" : "var(--red)" }}>
+            {stats.score >= 0 ? "+" : ""}{stats.score}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Reputation Score</div>
+          <div className="stat-label">Score</div>
         </div>
-        <div>
-          <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--green)" }}>{stats.completed}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Completed</div>
+        <div className="profile-stat-card">
+          <div className="stat-value" style={{ color: "var(--green)" }}>{stats.completed}</div>
+          <div className="stat-label">Completed</div>
         </div>
-        <div>
-          <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--red)" }}>{stats.failed}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Failed</div>
+        <div className="profile-stat-card">
+          <div className="stat-value" style={{ color: "var(--red)" }}>{stats.failed}</div>
+          <div className="stat-label">Failed</div>
         </div>
-        <div>
-          <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{stats.total}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Total Jobs</div>
+        <div className="profile-stat-card">
+          <div className="stat-value">{stats.total}</div>
+          <div className="stat-label">Total</div>
         </div>
       </div>
+
       {(stats.pipelineTotal > 0 || stats.acpTotal > 0) && (
         <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
           {stats.pipelineTotal > 0 && <span>{stats.pipelineTotal} pipeline stages</span>}
@@ -251,37 +257,33 @@ function AgentAcpHistory({ ownerAddr }: { ownerAddr: string }) {
   if (isLoading) return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Loading...</div>;
 
   if (jobs.length === 0) {
-    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>No ACP jobs found for this owner.</div>;
+    return <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", padding: "0.5rem 0" }}>No ACP jobs found for this owner.</div>;
   }
-
-  const addr = (s: string) => s.length > 30 ? `${s.slice(0, 28)}...` : s;
 
   return (
     <div style={{ display: "grid", gap: "0.5rem" }}>
       {jobs.map((j) => (
         <div
           key={j.id}
-          style={{
-            padding: "0.6rem 0.75rem",
-            background: "var(--bg)",
-            borderRadius: "6px",
-            border: "1px solid var(--border)",
-            fontSize: "0.85rem",
-          }}
+          className="glass-card"
+          style={{ padding: "0.65rem 0.85rem" }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
-            <span style={{ fontWeight: 600 }}>Job #{j.id}</span>
-            <span style={{ display: "flex", gap: "0.5rem" }}>
-              <span className={`status ${JOB_STATUS[j.status]?.toLowerCase() ?? "active"}`}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
+            <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>Job #{j.id}</span>
+            <span style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+              <span className={`pill ${j.status === 3 ? "pill-green" : j.status === 4 ? "pill-red" : j.status === 1 ? "pill-blue" : "pill-gray"}`}>
                 {JOB_STATUS[j.status] ?? "Unknown"}
               </span>
-              <span style={{ color: "var(--accent)", fontSize: "0.75rem" }}>{j.role}</span>
+              <span className="pill pill-purple" style={{ fontSize: "0.68rem" }}>{j.role}</span>
             </span>
           </div>
-          <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginBottom: "0.25rem" }}>
-            {addr(j.description || "No description")}
+          <div style={{ color: "var(--text-dim)", fontSize: "0.78rem", marginBottom: "0.15rem" }}>
+            {(j.description || "No description").length > 40 ? (j.description || "No description").slice(0, 40) + "..." : (j.description || "No description")}
           </div>
-          <div style={{ fontSize: "0.8rem" }}>Budget: {formatUnits(j.budget, 6)} USDC</div>
+          <div style={{ fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            <CircleDollarSign size={12} style={{ color: "var(--green)" }} />
+            <span>{formatUnits(j.budget, 6)} USDC</span>
+          </div>
         </div>
       ))}
     </div>
@@ -314,46 +316,93 @@ export function AgentProfileModal({ agentId, onClose, onHire }: Props) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>&times;</button>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="modal-glass"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="modal-close" onClick={onClose}>
+          <X size={18} />
+        </button>
 
-        <div className="profile-header">
-          <h2>Agent #{agentId}</h2>
+        {/* Header with avatar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
+          <div
+            className="agent-avatar"
+            style={{
+              background: agentColor(agentId),
+              width: 56, height: 56, minWidth: 56,
+              fontSize: "1rem", fontWeight: 700,
+            }}
+          >
+            A{agentId}
+          </div>
+          <div>
+            <h2 style={{ fontSize: "1.35rem", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "0.15rem" }}>
+              Agent #{agentId}
+            </h2>
+            <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", fontFamily: "monospace" }}>
+              {(ownerAddr as string) ?? "Loading..."}
+            </div>
+          </div>
         </div>
 
-        <div className="profile-section">
-          <h4>Identity</h4>
-          <div className="policy-stat">
-            <span className="label">Owner</span>
-            <span className="addr">{(ownerAddr as string) ?? "..."}</span>
+        {/* Identity Section */}
+        <div className="glass-card" style={{ padding: "0.85rem 1rem", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.65rem" }}>
+            <User size={15} style={{ color: "var(--accent)" }} />
+            <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Identity</span>
           </div>
-          <div className="policy-stat">
-            <span className="label">Metadata</span>
-            <span className="addr" style={{ wordBreak: "break-all" }}>
-              {(tokenURI as string) || "None"}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.85rem" }}>
+            <span style={{ color: "var(--text-dim)" }}>Owner</span>
+            <span style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{(ownerAddr as string) ?? "..."}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "0.4rem 0", fontSize: "0.85rem" }}>
+            <span style={{ color: "var(--text-dim)" }}>Metadata</span>
+            <span style={{ wordBreak: "break-all", fontSize: "0.8rem", maxWidth: "60%", textAlign: "right" }}>
+              {(tokenURI as string) ? (
+                <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: "var(--accent)" }}>
+                  <ExternalLink size={12} />
+                  {(tokenURI as string).length > 35 ? (tokenURI as string).slice(0, 35) + "..." : (tokenURI as string)}
+                </span>
+              ) : "None"}
             </span>
           </div>
         </div>
 
-        <div className="profile-section">
-          <h4>Services</h4>
+        {/* Services */}
+        <div style={{ marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.65rem" }}>
+            <ShoppingBag size={15} style={{ color: "var(--accent)" }} />
+            <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Services</span>
+          </div>
           <AgentServices agentId={agentId} onHire={onHire} />
         </div>
 
-        <div className="profile-section">
-          <h4>Reputation</h4>
+        {/* Reputation */}
+        <div style={{ marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.65rem" }}>
+            <Star size={15} style={{ color: "var(--accent)" }} />
+            <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Reputation</span>
+          </div>
           <AgentReputation agentId={agentId} ownerAddr={ownerAddr as string | undefined} />
         </div>
 
-        <div className="profile-section">
-          <h4>ACP Job History</h4>
+        {/* ACP Job History */}
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.65rem" }}>
+            <Briefcase size={15} style={{ color: "var(--accent)" }} />
+            <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.05em" }}>ACP Job History</span>
+          </div>
           {ownerAddr ? (
             <AgentAcpHistory ownerAddr={ownerAddr as string} />
           ) : (
             <div style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Loading owner...</div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

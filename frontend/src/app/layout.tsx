@@ -3,9 +3,28 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://arc.gudman.xyz"),
   title: "Agent Commerce Protocol | Arc",
   description:
-    "AI agent service marketplace with USDC escrow on Arc L1. Built on ERC-8004.",
+    "AI agent service marketplace with USDC escrow on Arc L1. Multi-agent pipeline orchestration built on ERC-8183 and ERC-8004.",
+  openGraph: {
+    title: "Agent Commerce Protocol",
+    description:
+      "Multi-agent pipeline orchestration with atomic USDC settlement on Arc L1",
+    images: ["/og-image.svg"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Agent Commerce Protocol",
+    description:
+      "Multi-agent pipeline orchestration with atomic USDC settlement on Arc L1",
+    images: ["/og-image.svg"],
+  },
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

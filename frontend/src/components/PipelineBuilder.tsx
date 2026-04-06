@@ -9,6 +9,8 @@ import USDCABI from "@/abi/USDC.json";
 import { CAPABILITY_NAMES } from "@/lib/constants";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
+import { motion } from "framer-motion";
+import { Layers, Plus, Trash2, ArrowRight, CheckCircle2, Wallet, CircleDollarSign, Clock } from "lucide-react";
 
 type StageInput = {
   providerAddress: string;
@@ -203,171 +205,225 @@ export function PipelineBuilder({ prefill, onClearPrefill }: Props = {}) {
   };
 
   if (!address) {
-    return <div className="empty">Connect wallet to create a pipeline.</div>;
+    return (
+      <div className="empty-state">
+        <Wallet size={40} className="empty-icon" />
+        <p>Connect wallet to create a pipeline.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="card">
-      <h3>Create Pipeline</h3>
+    <div>
+      <div className="section-header">
+        <h2>Create Pipeline</h2>
+        <p className="section-subtitle">Build a multi-stage workflow with on-chain escrow</p>
+      </div>
+
+      {/* Step Indicator */}
+      <div className="step-bar">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div className={`step-node ${step >= 1 ? (step > 1 ? "completed" : "active") : ""}`}>
+            {step > 1 ? <CheckCircle2 size={16} /> : "1"}
+          </div>
+          <span className={`step-label ${step === 1 ? "active" : step > 1 ? "completed" : ""}`}>Configure</span>
+        </div>
+        <div className={`step-connector ${step > 1 ? "completed" : ""}`} />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div className={`step-node ${step >= 2 ? "active" : ""}`}>
+            {isCreateSuccess ? <CheckCircle2 size={16} /> : "2"}
+          </div>
+          <span className={`step-label ${step >= 2 ? "active" : ""}`}>Approve & Create</span>
+        </div>
+      </div>
+
       <form onSubmit={handleCreate}>
-        <div className="form-group">
-          <label>Client Agent ID (0 = human, no policy check)</label>
-          <input
-            type="number"
-            placeholder="0"
-            value={clientAgentId}
-            onChange={(e) => setClientAgentId(e.target.value)}
-          />
-        </div>
+        <div className="glass-card" style={{ marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+            <Layers size={16} style={{ color: "var(--accent)" }} />
+            <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Pipeline Settings</span>
+          </div>
 
-        <div className="form-group">
-          <label>Currency</label>
-          <select
-            className="search-bar"
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value as "usdc" | "eurc")}
-          >
-            <option value="usdc">USDC</option>
-            <option value="eurc">EURC</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Deadline (hours from now)</label>
-          <input
-            type="number"
-            placeholder="24"
-            value={deadlineHours}
-            onChange={(e) => setDeadlineHours(e.target.value)}
-            required
-          />
-          {validation.deadline && (
-            <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.deadline}</span>
-          )}
-        </div>
-
-        <h4 style={{ margin: "1.5rem 0 0.75rem", color: "var(--text-dim)" }}>Stages</h4>
-
-        {stages.map((stage, i) => (
-          <div
-            key={i}
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "0.5rem",
-              padding: "1rem",
-              marginBottom: "1rem",
-              position: "relative",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-              <strong style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>Stage {i + 1}</strong>
-              {stages.length > 1 && (
-                <button
-                  type="button"
-                  className="btn btn-outline btn-sm"
-                  style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem" }}
-                  onClick={() => removeStage(i)}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
             <div className="form-group">
-              <label>Provider Address</label>
+              <label>Client Agent ID</label>
               <input
-                type="text"
-                placeholder="0x..."
-                value={stage.providerAddress}
-                onChange={(e) => updateStage(i, "providerAddress", e.target.value)}
-                required
-              />
-              {validation[`stage-${i}-addr`] && (
-                <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation[`stage-${i}-addr`]}</span>
-              )}
-            </div>
-            <div className="form-group">
-              <label>Provider Agent ID</label>
-              <input
+                className="glass-input"
                 type="number"
-                placeholder="e.g., 2"
-                value={stage.providerAgentId}
-                onChange={(e) => updateStage(i, "providerAgentId", e.target.value)}
-                required
+                placeholder="0"
+                value={clientAgentId}
+                onChange={(e) => setClientAgentId(e.target.value)}
               />
             </div>
+
             <div className="form-group">
-              <label>Capability</label>
+              <label>Currency</label>
               <select
-                className="search-bar"
-                value={stage.capability}
-                onChange={(e) => updateStage(i, "capability", e.target.value)}
+                className="glass-select"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as "usdc" | "eurc")}
               >
-                {CAPABILITY_NAMES.map(([raw, display]) => (
-                  <option key={raw} value={raw}>{display}</option>
-                ))}
+                <option value="usdc">USDC</option>
+                <option value="eurc">EURC</option>
               </select>
             </div>
+
             <div className="form-group">
-              <label>Budget ({currencyLabel})</label>
+              <label>Deadline (hours)</label>
               <input
-                type="text"
-                placeholder="e.g., 50"
-                value={stage.budget}
-                onChange={(e) => updateStage(i, "budget", e.target.value)}
+                className="glass-input"
+                type="number"
+                placeholder="24"
+                value={deadlineHours}
+                onChange={(e) => setDeadlineHours(e.target.value)}
                 required
               />
-              {validation[`stage-${i}-budget`] && (
-                <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation[`stage-${i}-budget`]}</span>
+              {validation.deadline && (
+                <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation.deadline}</span>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Stages */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "1.5rem 0 1rem" }}>
+          <Layers size={16} style={{ color: "var(--accent)" }} />
+          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>Pipeline Stages</span>
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>({stages.length})</span>
+        </div>
+
+        {stages.map((stage, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="stage-card"
+          >
+            <div className="stage-card-header">
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <span className="stage-number">{i + 1}</span>
+                <strong style={{ fontSize: "0.85rem" }}>Stage {i + 1}</strong>
+              </div>
+              {stages.length > 1 && (
+                <button
+                  type="button"
+                  className="btn-danger"
+                  style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
+                  onClick={() => removeStage(i)}
+                >
+                  <Trash2 size={12} /> Remove
+                </button>
+              )}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              <div className="form-group">
+                <label>Provider Address</label>
+                <input
+                  className="glass-input"
+                  type="text"
+                  placeholder="0x..."
+                  value={stage.providerAddress}
+                  onChange={(e) => updateStage(i, "providerAddress", e.target.value)}
+                  required
+                />
+                {validation[`stage-${i}-addr`] && (
+                  <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation[`stage-${i}-addr`]}</span>
+                )}
+              </div>
+              <div className="form-group">
+                <label>Provider Agent ID</label>
+                <input
+                  className="glass-input"
+                  type="number"
+                  placeholder="e.g., 2"
+                  value={stage.providerAgentId}
+                  onChange={(e) => updateStage(i, "providerAgentId", e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Capability</label>
+                <select
+                  className="glass-select"
+                  value={stage.capability}
+                  onChange={(e) => updateStage(i, "capability", e.target.value)}
+                >
+                  {CAPABILITY_NAMES.map(([raw, display]) => (
+                    <option key={raw} value={raw}>{display}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Budget ({currencyLabel})</label>
+                <input
+                  className="glass-input"
+                  type="text"
+                  placeholder="e.g., 50"
+                  value={stage.budget}
+                  onChange={(e) => updateStage(i, "budget", e.target.value)}
+                  required
+                />
+                {validation[`stage-${i}-budget`] && (
+                  <span style={{ color: "var(--red)", fontSize: "0.75rem" }}>{validation[`stage-${i}-budget`]}</span>
+                )}
+              </div>
+            </div>
+          </motion.div>
         ))}
 
         <button
           type="button"
           className="btn btn-outline"
-          style={{ marginBottom: "1.5rem" }}
+          style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
           onClick={() => setStages((prev) => [...prev, emptyStage()])}
         >
-          + Add Stage
+          <Plus size={14} /> Add Stage
         </button>
 
-        <div style={{ marginBottom: "1rem", padding: "0.75rem", background: "var(--surface)", borderRadius: "0.5rem" }}>
-          <strong>Total Budget: </strong>
-          <span>{totalBudget.toFixed(2)} {currencyLabel}</span>
-          <span style={{ color: "var(--text-dim)", marginLeft: "0.5rem" }}>
-            ({stages.length} stage{stages.length !== 1 ? "s" : ""})
-          </span>
+        {/* Budget Summary */}
+        <div className="budget-summary">
+          <CircleDollarSign size={20} style={{ color: "var(--green)", flexShrink: 0 }} />
+          <div>
+            <div className="budget-amount" style={{ color: "var(--green)" }}>
+              {totalBudget.toFixed(2)} {currencyLabel}
+            </div>
+            <div className="budget-meta">
+              Total budget across {stages.length} stage{stages.length !== 1 ? "s" : ""}
+            </div>
+          </div>
         </div>
 
         {validation.contract && (
           <div className="warning-banner">{validation.contract}</div>
         )}
 
-        <div className="actions">
-          <div className="step-indicator" style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem", fontSize: "0.85rem" }}>
-            <span style={{ opacity: step >= 1 ? 1 : 0.4 }}>1. Approve</span>
-            <span>&rarr;</span>
-            <span style={{ opacity: step >= 2 ? 1 : 0.4 }}>2. Create</span>
-          </div>
+        {/* Action Buttons */}
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           {step === 1 ? (
             <button
               type="button"
-              className="btn"
+              className="btn-primary"
               onClick={handleApprove}
               disabled={isApproving || totalBudget <= 0 || !!validation.contract}
+              style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
             >
-              {isApproving ? "Approving..." : `Approve ${currencyLabel}`}
+              {isApproving ? "Approving..." : <><Wallet size={14} /> Approve {currencyLabel}</>}
             </button>
           ) : (
-            <button className="btn" type="submit" disabled={isCreating || !canSubmit}>
-              {isCreating ? "Creating..." : "Create Pipeline"}
+            <button
+              className="btn-primary"
+              type="submit"
+              disabled={isCreating || !canSubmit}
+              style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+            >
+              {isCreating ? "Creating..." : <><ArrowRight size={14} /> Create Pipeline</>}
             </button>
           )}
         </div>
 
         {isCreateSuccess && (
-          <div style={{ marginTop: "0.75rem", color: "var(--green)" }}>
+          <div className="success-banner" style={{ marginTop: "1rem" }}>
             Pipeline created! Check My Pipelines tab.
           </div>
         )}

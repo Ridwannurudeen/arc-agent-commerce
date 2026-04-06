@@ -11,6 +11,7 @@ import { capabilityName, PIPELINE_STATUS, STAGE_STATUS, JOB_STATUS } from "@/lib
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
 import type { PipelineData, StageData } from "@/lib/types";
+import { CheckCircle2, Circle, XCircle, Clock, CircleDollarSign, AlertCircle } from "lucide-react";
 
 type Props = {
   pipelineId: number;
@@ -187,7 +188,7 @@ export function PipelineTracker({ pipelineId }: Props) {
 
   // Determine what action is needed per stage
   function getStageAction(stage: StageData, stageIndex: number) {
-    if (stage.status !== 1) return null; // Only active stages have actions
+    if (stage.status !== 1) return null;
     const jobId = Number(stage.jobId);
     const jobInfo = jobStatusMap.get(jobId);
     if (!jobInfo) return <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Loading job...</span>;
@@ -195,43 +196,58 @@ export function PipelineTracker({ pipelineId }: Props) {
     const jobStatus = jobInfo.status;
     const jobBudget = jobInfo.budget;
 
-    // Open + no budget
     if (jobStatus === 0 && jobBudget === BigInt(0)) {
-      return <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Waiting for provider to set budget</span>;
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: "var(--text-dim)" }}>
+          <Clock size={14} /> Waiting for provider to set budget
+        </div>
+      );
     }
-    // Open + budget set → fund
     if (jobStatus === 0 && jobBudget > BigInt(0)) {
       return (
-        <button className="btn-sm" onClick={handleFundStage} disabled={isFunding} style={{ background: "var(--accent)", color: "#fff" }}>
+        <button
+          className="btn-primary"
+          onClick={handleFundStage}
+          disabled={isFunding}
+          style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+        >
+          <CircleDollarSign size={14} />
           {isFunding ? "Funding..." : `Fund Stage (${formatUnits(jobBudget, 6)} USDC)`}
         </button>
       );
     }
-    // Funded
     if (jobStatus === 1) {
-      return <span style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>Waiting for provider to submit deliverable</span>;
+      return (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: "var(--text-dim)" }}>
+          <Clock size={14} /> Waiting for provider to submit deliverable
+        </div>
+      );
     }
-    // Submitted → approve/reject
     if (jobStatus === 2) {
       return (
         <div>
-          <div style={{ fontSize: "0.75rem", color: "var(--yellow)", marginBottom: "0.35rem" }}>
-            Deliverable submitted — review and approve or reject
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--yellow)", marginBottom: "0.5rem" }}>
+            <AlertCircle size={14} /> Deliverable submitted -- review and approve or reject
           </div>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-            <button className="btn-sm" onClick={handleApprove} disabled={isApproving}>
+            <button
+              className="btn-primary"
+              style={{ fontSize: "0.8rem", padding: "0.4rem 0.85rem" }}
+              onClick={handleApprove}
+              disabled={isApproving}
+            >
               {isApproving ? "Approving..." : "Approve"}
             </button>
             <input
+              className="glass-input"
               type="text"
               placeholder="Reason (optional)"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              style={{ padding: "0.3rem 0.5rem", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text)", fontSize: "0.8rem", width: "150px" }}
+              style={{ width: "160px", padding: "0.4rem 0.6rem", fontSize: "0.8rem" }}
             />
             <button
-              className="btn-sm"
-              style={{ background: "var(--red)", color: "#fff" }}
+              className="btn-danger"
               onClick={handleReject}
               disabled={isRejecting}
             >
@@ -245,66 +261,79 @@ export function PipelineTracker({ pipelineId }: Props) {
   }
 
   return (
-    <div style={{ marginTop: "0.75rem" }}>
-      {/* Stage progress */}
-      <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem" }}>
+    <div style={{ marginTop: "1rem" }}>
+      {/* Budget summary */}
+      <div className="budget-summary" style={{ marginBottom: "1rem" }}>
+        <CircleDollarSign size={18} style={{ color: "var(--green)", flexShrink: 0 }} />
+        <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <span style={{ fontSize: "0.85rem" }}>
+            Spent: <strong>{formatUnits(pipeline.totalSpent, 6)}</strong> / {formatUnits(pipeline.totalBudget, 6)} USDC
+          </span>
+          <span className={`pill ${statusLabel === "Active" ? "pill-blue" : statusLabel === "Completed" ? "pill-green" : statusLabel === "Cancelled" ? "pill-gray" : "pill-red"}`}>
+            {statusLabel}
+          </span>
+        </div>
+      </div>
+
+      {/* Visual timeline stepper */}
+      <div className="pipeline-stepper">
         {stages.map((stage, i) => {
           const label = STAGE_STATUS[stage.status] ?? "Unknown";
           const jobInfo = jobStatusMap.get(Number(stage.jobId));
           const jobLabel = jobInfo ? JOB_STATUS[jobInfo.status] : "";
+          const isCompleted = stage.status === 2;
+          const isFailed = stage.status === 3;
+          const isActiveStage = stage.status === 1;
+          const isLast = i === stages.length - 1;
+
           return (
-            <div
-              key={i}
-              style={{
-                flex: 1,
-                textAlign: "center",
-                padding: "0.5rem 0.25rem",
-                borderRadius: "0.25rem",
-                fontSize: "0.7rem",
-                background:
-                  stage.status === 2 ? "rgba(34, 197, 94, 0.2)" :
-                  stage.status === 3 ? "rgba(239, 68, 68, 0.2)" :
-                  stage.status === 1 ? "rgba(59, 130, 246, 0.15)" :
-                  "rgba(255,255,255,0.03)",
-                border: stage.status === 1 ? "1px solid var(--accent)" : "1px solid transparent",
-              }}
-            >
-              <div style={{ fontWeight: 600 }}>Stage {i + 1}</div>
-              <div>{capabilityName(stage.capabilityHash)}</div>
-              <div style={{ color: stage.status === 2 ? "var(--green)" : stage.status === 3 ? "var(--red)" : "var(--text-dim)" }}>
-                {label}{jobLabel ? ` (${jobLabel})` : ""}
+            <div key={i} className="pipeline-step">
+              <div className="pipeline-step-line">
+                <div className={`pipeline-step-circle ${isCompleted ? "completed" : isFailed ? "failed" : isActiveStage ? "active" : ""}`}>
+                  {isCompleted ? <CheckCircle2 size={14} /> : isFailed ? <XCircle size={14} /> : i + 1}
+                </div>
+                {!isLast && (
+                  <div className={`pipeline-step-connector ${isCompleted ? "completed" : ""}`} />
+                )}
               </div>
-              <div style={{ fontSize: "0.65rem", color: "var(--text-dim)" }}>
-                {formatUnits(stage.budget, 6)} USDC
+              <div className="pipeline-step-content">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.25rem" }}>
+                  <div>
+                    <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>Stage {i + 1}</span>
+                    <span style={{ marginLeft: "0.5rem", fontSize: "0.8rem", color: "var(--text-dim)" }}>
+                      {capabilityName(stage.capabilityHash)}
+                    </span>
+                  </div>
+                  <span className={`pill ${isCompleted ? "pill-green" : isFailed ? "pill-red" : isActiveStage ? "pill-blue" : "pill-gray"}`}>
+                    {label}{jobLabel ? ` / ${jobLabel}` : ""}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-dim)" }}>
+                  Budget: {formatUnits(stage.budget, 6)} USDC
+                </div>
+
+                {/* Active stage action for client */}
+                {isClient && isActive && isActiveStage && i === activeStageIndex && (
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "rgba(59, 130, 246, 0.05)", borderRadius: "8px", border: "1px solid rgba(59, 130, 246, 0.15)" }}>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-dim)", marginBottom: "0.5rem" }}>
+                      Job #{activeJobId?.toString()}
+                    </div>
+                    {getStageAction(stage, i)}
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Budget summary */}
-      <div style={{ display: "flex", gap: "1rem", fontSize: "0.8rem", marginBottom: "0.75rem", color: "var(--text-dim)" }}>
-        <span>Spent: {formatUnits(pipeline.totalSpent, 6)} / {formatUnits(pipeline.totalBudget, 6)} USDC</span>
-        <span>Status: <strong style={{ color: statusLabel === "Active" ? "var(--green)" : "var(--text)" }}>{statusLabel}</strong></span>
-      </div>
-
-      {/* Active stage action for client */}
-      {isClient && isActive && activeStage && activeStage.status === 1 && (
-        <div style={{ border: "1px solid var(--border)", borderRadius: "0.5rem", padding: "0.75rem", marginBottom: "0.75rem" }}>
-          <div style={{ fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text-dim)" }}>
-            Stage {activeStageIndex + 1} — Job #{activeJobId?.toString()}
-          </div>
-          {getStageAction(activeStage, activeStageIndex)}
-        </div>
-      )}
-
       {/* Cancel */}
       {isClient && isActive && (
         <button
-          className="btn btn-outline btn-sm"
-          style={{ borderColor: "var(--red)", color: "var(--red)" }}
+          className="btn-danger"
           onClick={handleCancel}
           disabled={isCancelling}
+          style={{ marginTop: "0.5rem" }}
         >
           {isCancelling ? "Cancelling..." : "Cancel Pipeline"}
         </button>

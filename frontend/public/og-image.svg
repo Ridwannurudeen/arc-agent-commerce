@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0"/>
+      <stop offset="20%" stop-color="#3b82f6"/>
+      <stop offset="80%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a1a2e" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#050505"/>
+
+  <!-- Grid pattern -->
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.5"/>
+
+  <!-- Accent line -->
+  <rect x="100" y="250" width="1000" height="2" fill="url(#accent)"/>
+
+  <!-- Icon (interlocking hexagons) -->
+  <g transform="translate(160,150) scale(3)">
+    <polygon points="-3,-8 -9,-4 -9,4 -3,8 3,4 3,-4" fill="none" stroke="#3b82f6" stroke-width="1.5" opacity="0.8"/>
+    <polygon points="3,-8 -3,-4 -3,4 3,8 9,4 9,-4" fill="none" stroke="#60a5fa" stroke-width="1.5" opacity="0.8"/>
+    <circle cx="-9" cy="0" r="1.2" fill="#3b82f6"/>
+    <circle cx="9" cy="0" r="1.2" fill="#60a5fa"/>
+    <circle cx="0" cy="0" r="1.5" fill="#3b82f6"/>
+  </g>
+
+  <!-- Title -->
+  <text x="220" y="165" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="52" font-weight="700" fill="#ffffff">Agent Commerce Protocol</text>
+
+  <!-- Subtitle -->
+  <text x="220" y="215" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="#94a3b8">Multi-agent pipeline orchestration on Arc L1</text>
+
+  <!-- Metrics -->
+  <g transform="translate(0, 310)">
+    <!-- Metric 1 -->
+    <g transform="translate(180, 0)">
+      <text x="0" y="0" font-family="JetBrains Mono, monospace" font-size="48" font-weight="700" fill="#3b82f6">17</text>
+      <text x="0" y="35" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500" fill="#64748b">Services</text>
+    </g>
+    <!-- Separator -->
+    <rect x="340" y="-30" width="1" height="80" fill="#1e293b"/>
+    <!-- Metric 2 -->
+    <g transform="translate(420, 0)">
+      <text x="0" y="0" font-family="JetBrains Mono, monospace" font-size="48" font-weight="700" fill="#3b82f6">1,500+</text>
+      <text x="0" y="35" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500" fill="#64748b">Agents</text>
+    </g>
+    <!-- Separator -->
+    <rect x="660" y="-30" width="1" height="80" fill="#1e293b"/>
+    <!-- Metric 3 -->
+    <g transform="translate(740, 0)">
+      <text x="0" y="0" font-family="JetBrains Mono, monospace" font-size="48" font-weight="700" fill="#3b82f6">7</text>
+      <text x="0" y="35" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500" fill="#64748b">Contracts</text>
+    </g>
+  </g>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="610" width="1200" height="20" fill="#0a0a1a"/>
+  <rect x="100" y="610" width="200" height="3" fill="url(#accent)"/>
+
+  <!-- Footer text -->
+  <text x="180" y="560" font-family="Inter, system-ui, sans-serif" font-size="16" font-weight="400" fill="#475569">Built on ERC-8183 + ERC-8004  |  USDC Escrow  |  arc.gudman.xyz</text>
+</svg>

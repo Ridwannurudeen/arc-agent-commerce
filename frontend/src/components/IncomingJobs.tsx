@@ -10,6 +10,8 @@ import { formatUnits, keccak256, toHex } from "viem";
 import { Skeleton } from "@/components/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
+import { motion } from "framer-motion";
+import { Inbox, CircleDollarSign, Send, Clock, CheckCircle2, XCircle, Wallet, PackageSearch } from "lucide-react";
 
 type IncomingJob = {
   pipelineId: number;
@@ -21,11 +23,18 @@ type IncomingJob = {
   jobBudget: bigint;
 };
 
+function jobPillClass(status: number) {
+  if (status === 3) return "pill-green";
+  if (status === 4) return "pill-red";
+  if (status === 1) return "pill-blue";
+  if (status === 2) return "pill-yellow";
+  return "pill-gray";
+}
+
 export function IncomingJobs() {
   const { address, isConnected } = useAccount();
   const { addToast } = useToast();
 
-  // Step 1: Get total pipeline count
   const { data: nextPipelineId } = useReadContract({
     address: CONTRACTS.PIPELINE_ORCHESTRATOR,
     abi: PipelineOrchestratorABI,
@@ -35,7 +44,6 @@ export function IncomingJobs() {
 
   const pipelineCount = Number(nextPipelineId ?? 0);
 
-  // Step 2: Batch-read all pipelines' stages
   const { data: stagesRaw, isLoading: loadingStages } = useReadContracts({
     contracts: Array.from({ length: pipelineCount }, (_, i) => ({
       address: CONTRACTS.PIPELINE_ORCHESTRATOR as `0x${string}`,
@@ -47,7 +55,6 @@ export function IncomingJobs() {
     query: { enabled: pipelineCount > 0 },
   });
 
-  // Find stages where provider matches wallet
   const myStages = useMemo(() => {
     if (!stagesRaw || !address) return [];
     const result: { pipelineId: number; stageIndex: number; stage: any }[] = [];
@@ -66,7 +73,6 @@ export function IncomingJobs() {
     return result;
   }, [stagesRaw, address]);
 
-  // Step 3: Batch-read ACP jobs for matching stages
   const jobIds = myStages.map((s) => {
     const jobId = s.stage.jobId ?? s.stage[4];
     return Number(jobId);
@@ -83,7 +89,6 @@ export function IncomingJobs() {
     query: { enabled: jobIds.length > 0 },
   });
 
-  // Merge data
   const jobs: IncomingJob[] = useMemo(() => {
     if (!jobsRaw) return [];
     return myStages.map((s, i) => {
@@ -108,20 +113,9 @@ export function IncomingJobs() {
   const { isSuccess: setBudgetSuccess } = useWaitForTransactionReceipt({ hash: setBudgetHash });
 
   useEffect(() => {
-    if (setBudgetSuccess) {
-      addToast("Budget set!", "success", setBudgetHash);
-      setBudgetJobId(null);
-      setBudgetAmount("");
-      refetchJobs();
-    }
+    if (setBudgetSuccess) { addToast("Budget set!", "success", setBudgetHash); setBudgetJobId(null); setBudgetAmount(""); refetchJobs(); }
   }, [setBudgetSuccess]);
-
-  useEffect(() => {
-    if (setBudgetError) {
-      addToast(parseContractError(setBudgetError), "error");
-      resetSetBudget();
-    }
-  }, [setBudgetError]);
+  useEffect(() => { if (setBudgetError) { addToast(parseContractError(setBudgetError), "error"); resetSetBudget(); } }, [setBudgetError]);
 
   // submit action
   const [submitJobId, setSubmitJobId] = useState<number | null>(null);
@@ -130,25 +124,15 @@ export function IncomingJobs() {
   const { isSuccess: submitSuccess } = useWaitForTransactionReceipt({ hash: submitHash });
 
   useEffect(() => {
-    if (submitSuccess) {
-      addToast("Deliverable submitted!", "success", submitHash);
-      setSubmitJobId(null);
-      setDeliverableText("");
-      refetchJobs();
-    }
+    if (submitSuccess) { addToast("Deliverable submitted!", "success", submitHash); setSubmitJobId(null); setDeliverableText(""); refetchJobs(); }
   }, [submitSuccess]);
-
-  useEffect(() => {
-    if (submitError) {
-      addToast(parseContractError(submitError), "error");
-      resetSubmit();
-    }
-  }, [submitError]);
+  useEffect(() => { if (submitError) { addToast(parseContractError(submitError), "error"); resetSubmit(); } }, [submitError]);
 
   if (!isConnected) {
     return (
-      <div className="card" style={{ textAlign: "center", padding: "3rem" }}>
-        <p style={{ color: "var(--text-dim)" }}>Connect your wallet to view incoming jobs.</p>
+      <div className="empty-state">
+        <Wallet size={40} className="empty-icon" />
+        <p>Connect your wallet to view incoming jobs.</p>
       </div>
     );
   }
@@ -157,61 +141,69 @@ export function IncomingJobs() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: "1.5rem" }}>Incoming Jobs</h2>
+      <div className="section-header">
+        <h2>Incoming Jobs</h2>
+        <p className="section-subtitle">{jobs.length} job{jobs.length !== 1 ? "s" : ""} assigned to your wallet</p>
+      </div>
 
       {isLoading && <Skeleton />}
 
       {!isLoading && jobs.length === 0 && (
-        <div className="card" style={{ textAlign: "center", padding: "3rem" }}>
-          <p style={{ color: "var(--text-dim)" }}>No incoming jobs. List a service to start receiving work.</p>
+        <div className="empty-state">
+          <PackageSearch size={40} className="empty-icon" />
+          <p>No incoming jobs</p>
+          <p className="secondary">List a service to start receiving work</p>
         </div>
       )}
 
       <div style={{ display: "grid", gap: "0.75rem" }}>
-        {jobs.map((j) => (
-          <div key={`${j.pipelineId}-${j.stageIndex}`} className="card" style={{ padding: "1rem 1.25rem" }}>
+        {jobs.map((j, idx) => (
+          <motion.div
+            key={`${j.pipelineId}-${j.stageIndex}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.15, delay: idx * 0.03 }}
+            className="glass-card"
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
               <div>
-                <div style={{ fontWeight: 600, marginBottom: "0.25rem" }}>
-                  Pipeline #{j.pipelineId} &mdash; Stage {j.stageIndex}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                  <Inbox size={15} style={{ color: "var(--accent)" }} />
+                  <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                    Pipeline #{j.pipelineId} -- Stage {j.stageIndex}
+                  </span>
                 </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>
-                  {capabilityName(j.capabilityHash)} &middot; Job #{j.jobId} &middot; Stage budget: {formatUnits(j.budget, 6)} USDC
+                <div style={{ display: "flex", gap: "0.75rem", fontSize: "0.78rem", color: "var(--text-dim)", flexWrap: "wrap" }}>
+                  <span className="pill pill-blue" style={{ fontSize: "0.7rem" }}>{capabilityName(j.capabilityHash)}</span>
+                  <span>Job #{j.jobId}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                    <CircleDollarSign size={12} /> {formatUnits(j.budget, 6)} USDC
+                  </span>
                 </div>
               </div>
-              <span
-                className={`status ${
-                  j.jobStatus === 3 ? "completed" : j.jobStatus === 4 ? "expired" : "active"
-                }`}
-              >
+              <span className={`pill ${jobPillClass(j.jobStatus)}`}>
                 {j.jobStatus >= 0 ? JOB_STATUS[j.jobStatus] : "Unknown"}
               </span>
             </div>
 
-            {/* Open + no budget set yet — provider sets budget */}
+            {/* Open + no budget set */}
             {j.jobStatus === 0 && j.jobBudget === BigInt(0) && (
-              <div style={{ marginTop: "0.5rem" }}>
+              <div style={{ marginTop: "0.5rem", padding: "0.75rem", background: "rgba(59,130,246,0.05)", borderRadius: "8px", border: "1px solid rgba(59,130,246,0.15)" }}>
                 {budgetJobId === j.jobId ? (
                   <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                     <input
+                      className="glass-input"
                       type="number"
                       step="0.01"
                       value={budgetAmount}
                       onChange={(e) => setBudgetAmount(e.target.value)}
                       placeholder={formatUnits(j.budget, 6)}
-                      style={{
-                        padding: "0.4rem 0.6rem",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "6px",
-                        color: "var(--text)",
-                        fontSize: "0.85rem",
-                        width: "120px",
-                      }}
+                      style={{ width: "130px", padding: "0.4rem 0.6rem", fontSize: "0.85rem" }}
                     />
                     <span style={{ fontSize: "0.85rem", color: "var(--text-dim)" }}>USDC</span>
                     <button
-                      className="btn-sm"
+                      className="btn-primary"
+                      style={{ fontSize: "0.8rem", padding: "0.4rem 0.75rem" }}
                       disabled={!!setBudgetHash && !setBudgetSuccess}
                       onClick={() => {
                         const amt = budgetAmount ? BigInt(Math.round(Number(budgetAmount) * 1_000_000)) : j.budget;
@@ -228,47 +220,39 @@ export function IncomingJobs() {
                   </div>
                 ) : (
                   <button
-                    className="btn-sm"
-                    onClick={() => {
-                      setBudgetJobId(j.jobId);
-                      setBudgetAmount(formatUnits(j.budget, 6));
-                    }}
+                    className="btn-primary"
+                    style={{ fontSize: "0.8rem", padding: "0.4rem 0.85rem", display: "flex", alignItems: "center", gap: "0.35rem" }}
+                    onClick={() => { setBudgetJobId(j.jobId); setBudgetAmount(formatUnits(j.budget, 6)); }}
                   >
-                    Set Budget
+                    <CircleDollarSign size={14} /> Set Budget
                   </button>
                 )}
               </div>
             )}
 
-            {/* Open + budget set — waiting for client to fund */}
+            {/* Open + budget set */}
             {j.jobStatus === 0 && j.jobBudget > BigInt(0) && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--text-dim)" }}>
-                Budget set at {formatUnits(j.jobBudget, 6)} USDC. Waiting for client to fund.
+              <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "var(--text-dim)" }}>
+                <Clock size={14} /> Budget set at {formatUnits(j.jobBudget, 6)} USDC. Waiting for client to fund.
               </div>
             )}
 
-            {/* Funded — provider can submit deliverable */}
+            {/* Funded */}
             {j.jobStatus === 1 && (
-              <div style={{ marginTop: "0.5rem" }}>
+              <div style={{ marginTop: "0.5rem", padding: "0.75rem", background: "rgba(59,130,246,0.05)", borderRadius: "8px", border: "1px solid rgba(59,130,246,0.15)" }}>
                 {submitJobId === j.jobId ? (
                   <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                     <input
+                      className="glass-input"
                       type="text"
                       value={deliverableText}
                       onChange={(e) => setDeliverableText(e.target.value)}
                       placeholder="Deliverable description"
-                      style={{
-                        padding: "0.4rem 0.6rem",
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "6px",
-                        color: "var(--text)",
-                        fontSize: "0.85rem",
-                        flex: 1,
-                      }}
+                      style={{ flex: 1, padding: "0.4rem 0.6rem", fontSize: "0.85rem" }}
                     />
                     <button
-                      className="btn-sm"
+                      className="btn-primary"
+                      style={{ fontSize: "0.8rem", padding: "0.4rem 0.75rem", display: "flex", alignItems: "center", gap: "0.25rem" }}
                       disabled={!deliverableText || (!!submitHash && !submitSuccess)}
                       onClick={() => {
                         const hash = keccak256(toHex(deliverableText));
@@ -280,38 +264,42 @@ export function IncomingJobs() {
                         });
                       }}
                     >
-                      {submitHash && !submitSuccess ? "Submitting..." : "Submit"}
+                      <Send size={12} /> {submitHash && !submitSuccess ? "Submitting..." : "Submit"}
                     </button>
                   </div>
                 ) : (
-                  <button className="btn-sm" onClick={() => setSubmitJobId(j.jobId)}>
-                    Submit Deliverable
+                  <button
+                    className="btn-primary"
+                    style={{ fontSize: "0.8rem", padding: "0.4rem 0.85rem", display: "flex", alignItems: "center", gap: "0.35rem" }}
+                    onClick={() => setSubmitJobId(j.jobId)}
+                  >
+                    <Send size={14} /> Submit Deliverable
                   </button>
                 )}
               </div>
             )}
 
-            {/* Submitted — waiting for approval */}
+            {/* Submitted */}
             {j.jobStatus === 2 && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--yellow)" }}>
-                Deliverable submitted. Waiting for client approval.
+              <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "var(--yellow)" }}>
+                <Clock size={14} /> Deliverable submitted. Waiting for client approval.
               </div>
             )}
 
-            {/* Completed — paid */}
+            {/* Completed */}
             {j.jobStatus === 3 && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--green)" }}>
-                Paid {formatUnits(j.jobBudget, 6)} USDC
+              <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "var(--green)" }}>
+                <CheckCircle2 size={14} /> Paid {formatUnits(j.jobBudget, 6)} USDC
               </div>
             )}
 
             {/* Rejected */}
             {j.jobStatus === 4 && (
-              <div style={{ marginTop: "0.5rem", fontSize: "0.85rem", color: "var(--red)" }}>
-                Rejected by evaluator
+              <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", color: "var(--red)" }}>
+                <XCircle size={14} /> Rejected by evaluator
               </div>
             )}
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

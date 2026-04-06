@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="4" fill="#050505"/>
+  <g transform="translate(16,16)">
+    <!-- Left hexagon -->
+    <polygon points="-3,-8 -9,-4 -9,4 -3,8 3,4 3,-4" fill="none" stroke="#3b82f6" stroke-width="1.5" opacity="0.8"/>
+    <!-- Right hexagon, offset and interlocking -->
+    <polygon points="3,-8 -3,-4 -3,4 3,8 9,4 9,-4" fill="none" stroke="#60a5fa" stroke-width="1.5" opacity="0.8"/>
+    <!-- Circuit nodes -->
+    <circle cx="-9" cy="0" r="1.2" fill="#3b82f6"/>
+    <circle cx="9" cy="0" r="1.2" fill="#60a5fa"/>
+    <!-- Circuit lines extending outward -->
+    <line x1="-10.2" y1="0" x2="-13" y2="0" stroke="#3b82f6" stroke-width="1" opacity="0.6"/>
+    <line x1="10.2" y1="0" x2="13" y2="0" stroke="#60a5fa" stroke-width="1" opacity="0.6"/>
+    <!-- Center overlap dot -->
+    <circle cx="0" cy="0" r="1.5" fill="#3b82f6"/>
+  </g>
+</svg>

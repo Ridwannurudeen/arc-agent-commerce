@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { Sidebar } from "@/components/Sidebar";
@@ -18,9 +18,11 @@ import { AdminPanel } from "@/components/AdminPanel";
 import { Streams } from "@/components/Streams";
 import { AgentProfileModal } from "@/components/AgentProfileModal";
 import { TerminalToggle } from "@/components/TerminalToggle";
+import { LandingHero } from "@/components/LandingHero";
 import type { Tab } from "@/lib/types";
 
 export default function Home() {
+  const [showDashboard, setShowDashboard] = useState(false);
   const [tab, setTab] = useState<Tab>("marketplace");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
@@ -31,6 +33,16 @@ export default function Home() {
     price: bigint;
   } | null>(null);
 
+  // Skip landing if ?app=1 query param is present
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("app") === "1") {
+        setShowDashboard(true);
+      }
+    }
+  }, []);
+
   const handleHire = (agentId: number, provider: string, capability: string, price: bigint) => {
     setPipelinePrefill({ agentId, provider, capability, price });
     setTab("create-pipeline");
@@ -40,6 +52,10 @@ export default function Home() {
   const handleViewAgent = (agentId: number) => {
     setSelectedAgentId(agentId);
   };
+
+  if (!showDashboard) {
+    return <LandingHero onLaunch={() => setShowDashboard(true)} />;
+  }
 
   return (
     <>
