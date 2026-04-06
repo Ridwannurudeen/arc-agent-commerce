@@ -84,12 +84,10 @@ contract StreamEscrow is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     // ---- Initializer ----
 
-    function initialize(
-        address currency_,
-        address identityRegistry_,
-        address reputationRegistry_,
-        address owner_
-    ) external initializer {
+    function initialize(address currency_, address identityRegistry_, address reputationRegistry_, address owner_)
+        external
+        initializer
+    {
         __Ownable_init(owner_);
         __Ownable2Step_init();
 
@@ -246,8 +244,7 @@ contract StreamEscrow is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         if (block.timestamp >= s.endTime && s.status == StreamStatus.Active) {
             s.status = StreamStatus.Completed;
             reputationRegistry.giveFeedback(
-                s.providerAgentId, int128(int256(100)), 0,
-                "stream_completed", "", "", "", bytes32(streamId)
+                s.providerAgentId, int128(int256(100)), 0, "stream_completed", "", "", "", bytes32(streamId)
             );
             emit StreamCompleted(streamId, s.deposit);
         }
