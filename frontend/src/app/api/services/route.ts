@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       args: [BigInt(i)],
     }));
 
-    const results = await batchRead(calls as any);
+    const results = await batchRead(calls);
 
     let services = results
       .map((r, i) => {

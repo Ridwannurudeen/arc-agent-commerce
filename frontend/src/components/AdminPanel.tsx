@@ -38,15 +38,15 @@ function DisputeQueueItem({ agreementId }: { agreementId: number }) {
     <div className="dispute-queue-item">
       <div className="row">
         <span className="label">Agreement #{agreementId}</span>
-        <span>{formatUnits(agr.amount, 6)} USDC</span>
+        <span>{formatUnits(agr.amount ?? BigInt(0), 6)} USDC</span>
       </div>
       <div className="row">
         <span className="label">Client</span>
-        <span className="addr">{agr.client.slice(0, 6)}...{agr.client.slice(-4)}</span>
+        <span className="addr">{(agr.client || "").slice(0, 6)}...{(agr.client || "").slice(-4)}</span>
       </div>
       <div className="row">
         <span className="label">Provider</span>
-        <span className="addr">{agr.provider.slice(0, 6)}...{agr.provider.slice(-4)}</span>
+        <span className="addr">{(agr.provider || "").slice(0, 6)}...{(agr.provider || "").slice(-4)}</span>
       </div>
       <div className="flex-row" style={{ marginTop: "0.5rem" }}>
         <span style={{ fontSize: "0.8rem", minWidth: "120px" }}>

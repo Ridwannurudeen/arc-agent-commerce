@@ -350,14 +350,18 @@ function StreamCard({ streamId, address }: { streamId: number; address: `0x${str
       { onError: (err) => addToast(parseContractError(err), "error") });
   };
   const handleTopUpApprove = () => {
-    const parsed = parseUnits(topUpAmount, 6);
-    approveTopUpWrite({ address: CONTRACTS.USDC, abi: USDCABI, functionName: "approve", args: [CONTRACTS.STREAM_ESCROW, parsed], chainId: arcTestnet.id },
-      { onError: (err) => addToast(parseContractError(err), "error") });
+    try {
+      const parsed = parseUnits(topUpAmount, 6);
+      approveTopUpWrite({ address: CONTRACTS.USDC, abi: USDCABI, functionName: "approve", args: [CONTRACTS.STREAM_ESCROW, parsed], chainId: arcTestnet.id },
+        { onError: (err) => addToast(parseContractError(err), "error") });
+    } catch { addToast("Invalid amount", "error"); }
   };
   const handleTopUp = () => {
-    const parsed = parseUnits(topUpAmount, 6);
-    topUpWrite({ address: CONTRACTS.STREAM_ESCROW, abi: StreamEscrowABI, functionName: "topUp", args: [BigInt(streamId), parsed], chainId: arcTestnet.id },
-      { onError: (err) => addToast(parseContractError(err), "error") });
+    try {
+      const parsed = parseUnits(topUpAmount, 6);
+      topUpWrite({ address: CONTRACTS.STREAM_ESCROW, abi: StreamEscrowABI, functionName: "topUp", args: [BigInt(streamId), parsed], chainId: arcTestnet.id },
+        { onError: (err) => addToast(parseContractError(err), "error") });
+    } catch { addToast("Invalid amount", "error"); }
   };
 
   return (

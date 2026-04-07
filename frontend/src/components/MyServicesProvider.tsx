@@ -5,7 +5,7 @@ import { useAccount, useReadContract, useReadContracts, useWriteContract, useWai
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import { capabilityName } from "@/lib/constants";
-import { formatUnits } from "viem";
+import { formatUnits, parseUnits } from "viem";
 import { Skeleton } from "@/components/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
@@ -174,6 +174,7 @@ export function MyServicesProvider({ onViewAgent }: Props) {
                           abi: ServiceMarketABI,
                           functionName: "delistService",
                           args: [BigInt(s.serviceId)],
+                          chainId: arcTestnet.id,
                         });
                       }}
                     >
@@ -204,7 +205,8 @@ export function MyServicesProvider({ onViewAgent }: Props) {
                       address: CONTRACTS.SERVICE_MARKET,
                       abi: ServiceMarketABI,
                       functionName: "updateService",
-                      args: [BigInt(s.serviceId), BigInt(Math.round(Number(newPrice) * 1_000_000)), s.metadataURI],
+                      args: [BigInt(s.serviceId), parseUnits(newPrice, 6), s.metadataURI],
+                      chainId: arcTestnet.id,
                     });
                   }}
                 >

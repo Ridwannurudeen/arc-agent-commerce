@@ -6,7 +6,7 @@ import { CONTRACTS, arcTestnet } from "@/config";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import { capabilityName, JOB_STATUS } from "@/lib/constants";
-import { formatUnits, keccak256, toHex } from "viem";
+import { formatUnits, keccak256, toHex, parseUnits } from "viem";
 import { Skeleton } from "@/components/Skeleton";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
@@ -206,12 +206,13 @@ export function IncomingJobs() {
                       style={{ fontSize: "0.8rem", padding: "0.4rem 0.75rem" }}
                       disabled={!!setBudgetHash && !setBudgetSuccess}
                       onClick={() => {
-                        const amt = budgetAmount ? BigInt(Math.round(Number(budgetAmount) * 1_000_000)) : j.budget;
+                        const amt = budgetAmount ? parseUnits(budgetAmount, 6) : j.budget;
                         callSetBudget({
                           address: CONTRACTS.AGENTIC_COMMERCE,
                           abi: AgenticCommerceABI,
                           functionName: "setBudget",
                           args: [BigInt(j.jobId), amt, "0x"],
+                          chainId: arcTestnet.id,
                         });
                       }}
                     >
@@ -261,6 +262,7 @@ export function IncomingJobs() {
                           abi: AgenticCommerceABI,
                           functionName: "submit",
                           args: [BigInt(j.jobId), hash, "0x"],
+                          chainId: arcTestnet.id,
                         });
                       }}
                     >

@@ -6,7 +6,7 @@ import { CONTRACTS, arcTestnet } from "@/config";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import { CAPABILITY_NAMES } from "@/lib/constants";
-import { keccak256, toHex } from "viem";
+import { keccak256, toHex, parseUnits } from "viem";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
 import { motion } from "framer-motion";
@@ -144,6 +144,7 @@ export function RegisterAgent() {
               abi: IdentityRegistryABI,
               functionName: "register",
               args: [metadataURI || ""],
+              chainId: arcTestnet.id,
             });
           }}
           style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
@@ -224,9 +225,10 @@ export function RegisterAgent() {
               args: [
                 BigInt(registeredAgentId!),
                 keccak256(toHex(capability)),
-                BigInt(Math.round(Number(price) * 1_000_000)),
+                parseUnits(price, 6),
                 serviceMetadata,
               ],
+              chainId: arcTestnet.id,
             });
           }}
           style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}

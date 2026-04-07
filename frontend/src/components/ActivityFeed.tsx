@@ -327,14 +327,14 @@ export function ActivityFeed({ onViewAgent }: Props) {
                 </div>
                 <div style={{ display: "flex", gap: "1rem", fontSize: "0.75rem", color: "var(--text-dim)" }}>
                   <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <CircleDollarSign size={12} /> {formatUnits(agr.amount, 6)} USDC
+                    <CircleDollarSign size={12} /> {formatUnits(agr.amount ?? BigInt(0), 6)} USDC
                   </span>
                   <span
                     className="agent-link"
-                    onClick={() => onViewAgent(Number(agr.providerAgentId))}
+                    onClick={() => onViewAgent(Number(agr.providerAgentId ?? 0))}
                     style={{ cursor: "pointer" }}
                   >
-                    Provider Agent #{agr.providerAgentId.toString()}
+                    Provider Agent #{(agr.providerAgentId ?? 0).toString()}
                   </span>
                 </div>
               </div>

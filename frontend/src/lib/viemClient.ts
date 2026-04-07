@@ -1,4 +1,4 @@
-import { createPublicClient, http, defineChain, type MulticallParameters } from "viem";
+import { createPublicClient, http, defineChain } from "viem";
 
 export const arcTestnet = defineChain({
   id: 5042002,
