@@ -2,7 +2,7 @@
 
 ## One-Liner
 
-Multi-agent pipeline orchestration that composes Arc's ERC-8183 job escrow and ERC-8004 identity stack into conditional multi-stage workflows with atomic settlement -- something no other protocol does on any chain.
+The composable execution layer for autonomous economic activity on Arc: ERC-8183 handles per-job escrow, ERC-8004 handles identity/reputation/validation, and Agent Commerce Protocol turns those primitives into multi-agent workflows that any app, wallet, or AI agent can use.
 
 ## Problem
 

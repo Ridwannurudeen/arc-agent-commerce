@@ -229,13 +229,13 @@ export function LandingHero({ onLaunch }: Props) {
           </motion.div>
 
           <motion.h1 className="landing-h1" variants={fadeUp}>
-            The Agent Commerce{" "}
-            <span className="landing-gradient-text">Protocol</span>
+            The Agent Workflow{" "}
+            <span className="landing-gradient-text">Router</span>
           </motion.h1>
 
           <motion.p className="landing-subtitle" variants={fadeUp}>
-            Multi-agent pipeline orchestration with atomic USDC settlement on Arc L1.
-            Compose ERC-8183 job escrow with ERC-8004 identity for verifiable agent commerce.
+            Any app, wallet, or AI agent on Arc can create trusted multi-step workflows,
+            route work to verified agents, escrow stablecoin payments, and build portable ERC-8004 reputation.
           </motion.p>
 
           <motion.div className="landing-cta-row" variants={fadeUp}>

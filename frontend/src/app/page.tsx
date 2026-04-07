@@ -16,6 +16,7 @@ import { AcpJobsExplorer } from "@/components/AcpJobsExplorer";
 import { AgentDirectory } from "@/components/AgentDirectory";
 import { AdminPanel } from "@/components/AdminPanel";
 import { Streams } from "@/components/Streams";
+import { WorkflowTemplates } from "@/components/WorkflowTemplates";
 import { AgentProfileModal } from "@/components/AgentProfileModal";
 import { TerminalToggle } from "@/components/TerminalToggle";
 import { LandingHero } from "@/components/LandingHero";
@@ -33,6 +34,12 @@ export default function Home() {
     capability: string;
     price: bigint;
   } | null>(null);
+  const [templatePrefill, setTemplatePrefill] = useState<{
+    capability: string;
+    label: string;
+    budgetRange: [number, number];
+    description: string;
+  }[] | null>(null);
 
   // Skip landing if ?app=1 query param is present
   useEffect(() => {
@@ -70,6 +77,14 @@ export default function Home() {
           onMobileClose={() => setSidebarOpen(false)}
         />
         <main className="main-content">
+          {tab === "templates" && (
+            <WorkflowTemplates
+              onLaunchTemplate={(stages) => {
+                setTemplatePrefill(stages);
+                setTab("create-pipeline");
+              }}
+            />
+          )}
           {tab === "marketplace" && (
             <Marketplace onViewAgent={handleViewAgent} onHire={handleHire} />
           )}
@@ -80,6 +95,8 @@ export default function Home() {
             <PipelineBuilder
               prefill={pipelinePrefill}
               onClearPrefill={() => setPipelinePrefill(null)}
+              templatePrefill={templatePrefill}
+              onClearTemplatePrefill={() => setTemplatePrefill(null)}
             />
           )}
           {tab === "my-pipelines" && <MyPipelines />}

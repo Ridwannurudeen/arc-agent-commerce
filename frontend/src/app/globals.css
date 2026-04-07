@@ -2427,3 +2427,854 @@ header h1 span {
     justify-content: center;
   }
 }
+
+/* ============================================
+   Workflow Templates
+   ============================================ */
+
+.template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .template-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.2s ease;
+}
+
+.template-card:hover {
+  border-color: var(--accent);
+}
+
+.template-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.template-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.template-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  margin-bottom: 0.35rem;
+  color: var(--text);
+}
+
+.template-category-pill {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.template-description {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.template-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.template-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.template-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.template-reputation {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  padding: 0.35rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.template-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.45rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.template-expand-btn:hover {
+  color: var(--accent);
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+/* Stage Timeline */
+.template-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 0.25rem;
+  overflow: hidden;
+}
+
+.template-timeline-stage {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.template-timeline-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.template-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.template-timeline-line {
+  width: 2px;
+  flex: 1;
+  background: rgba(59, 130, 246, 0.15);
+  min-height: 20px;
+}
+
+.template-timeline-content {
+  flex: 1;
+  padding-bottom: 1rem;
+}
+
+.template-timeline-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.82rem;
+  margin-bottom: 0.3rem;
+  color: var(--text);
+}
+
+.template-stage-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.template-timeline-desc {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 0.4rem;
+}
+
+.template-timeline-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.template-budget-tag {
+  font-size: 0.7rem;
+  color: var(--green);
+  font-weight: 500;
+}
+
+.template-launch-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Agent Passport — Full-Screen Profile Modal
+   ══════════════════════════════════════════════════════════ */
+
+.passport-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.passport-container {
+  background: rgba(8, 8, 16, 0.97);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 960px;
+  max-height: 92vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.08),
+    0 24px 80px rgba(0, 0, 0, 0.6),
+    0 0 120px rgba(59, 130, 246, 0.04);
+}
+
+[data-theme="light"] .passport-container {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 24px 80px rgba(0, 0, 0, 0.12);
+}
+
+.passport-scroll {
+  overflow-y: auto;
+  padding: 2rem 2.5rem 1.5rem;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.passport-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.passport-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.passport-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.passport-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+/* ── Identity Header ── */
+.passport-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding-right: 3rem;
+}
+
+.passport-avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.passport-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.2);
+}
+
+.passport-avatar span {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.passport-verified-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: var(--bg);
+  border-radius: 50%;
+  padding: 2px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+}
+
+.passport-identity {
+  min-width: 0;
+}
+
+.passport-agent-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.2;
+}
+
+.passport-verified-text {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: rgba(59, 130, 246, 0.12);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.passport-owner-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.passport-owner-addr {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  letter-spacing: 0.01em;
+}
+
+.passport-copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0.15rem;
+  border-radius: 4px;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.passport-copy-btn:hover {
+  color: var(--accent);
+}
+
+.passport-metadata-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.passport-metadata-link:hover {
+  opacity: 0.8;
+}
+
+/* ── Stats Grid ── */
+.passport-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.passport-stat-card {
+  padding: 1rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.passport-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.passport-stat-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.45rem;
+  opacity: 0.7;
+}
+
+.passport-stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.15rem;
+}
+
+.passport-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+/* ── Two-column body ── */
+.passport-body {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.passport-col-main,
+.passport-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Collapsible Section ── */
+.passport-section {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(18, 18, 26, 0.35);
+  overflow: hidden;
+  transition: border-color 0.25s;
+}
+
+.passport-section:hover {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="light"] .passport-section {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.passport-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: color 0.15s;
+}
+
+.passport-section-header:hover {
+  color: var(--text);
+}
+
+.passport-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.passport-section-body {
+  padding: 0 1.1rem 1.1rem;
+}
+
+/* ── Services ── */
+.passport-services-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.passport-service-card {
+  padding: 0.85rem 1rem !important;
+}
+
+.passport-service-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.6rem;
+}
+
+.passport-service-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 0.1rem;
+}
+
+.passport-service-id {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.passport-service-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Job Timeline ── */
+.passport-timeline {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.passport-timeline-item {
+  padding: 0.75rem 1rem !important;
+}
+
+.passport-timeline-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.passport-timeline-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.passport-timeline-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.passport-job-id {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.passport-job-counterparty {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.passport-job-desc {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.4;
+}
+
+.passport-job-budget {
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--green);
+}
+
+.passport-show-more {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.passport-show-more:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Capabilities ── */
+.passport-caps-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.passport-cap-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  background: rgba(234, 179, 8, 0.1);
+  color: var(--yellow);
+  border: 1px solid rgba(234, 179, 8, 0.15);
+}
+
+/* ── Endpoints ── */
+.passport-endpoints-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.passport-endpoint-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem !important;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.passport-endpoint-check {
+  margin-left: auto;
+  color: var(--green);
+  opacity: 0.7;
+}
+
+/* ── Identity Details ── */
+.passport-identity-details {
+  display: grid;
+  gap: 0;
+}
+
+.passport-id-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.passport-id-row:last-child {
+  border-bottom: none;
+}
+
+.passport-id-label {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  flex-shrink: 0;
+}
+
+.passport-id-value {
+  text-align: right;
+  font-size: 0.78rem;
+  max-width: 60%;
+  word-break: break-all;
+}
+
+/* ── CTA ── */
+.passport-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.passport-hire-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.75rem 1.75rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.passport-hire-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+.passport-hire-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.passport-explorer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.passport-explorer-link:hover {
+  color: var(--accent);
+}
+
+/* ── Empty state ── */
+.passport-empty {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  padding: 0.75rem 0;
+  font-style: italic;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .passport-scroll {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  .passport-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+    padding-right: 2.5rem;
+  }
+
+  .passport-agent-title {
+    font-size: 1.3rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .passport-owner-row {
+    justify-content: center;
+  }
+
+  .passport-metadata-link {
+    justify-content: center;
+  }
+
+  .passport-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .passport-body {
+    grid-template-columns: 1fr;
+  }
+
+  .passport-cta {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .passport-hire-btn {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .passport-explorer-link {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .passport-container {
+    border-radius: 14px;
+    max-height: 96vh;
+  }
+
+  .passport-scroll {
+    padding: 1.25rem 1rem 1rem;
+  }
+
+  .passport-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 0.85rem;
+  }
+
+  .passport-agent-title {
+    font-size: 1.15rem;
+  }
+
+  .passport-stat-value {
+    font-size: 1.1rem;
+  }
+}

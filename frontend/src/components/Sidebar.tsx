@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   Layers,
+  FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -34,6 +35,7 @@ const NAV: NavSection[] = [
   {
     title: "Marketplace",
     items: [
+      { key: "templates", label: "Templates", icon: FileText },
       { key: "marketplace", label: "Browse Services", icon: Store },
       { key: "activity", label: "Activity", icon: Activity },
     ],

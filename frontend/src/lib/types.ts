@@ -11,6 +11,7 @@ export type Tab =
   | "acp-jobs"
   | "agent-directory"
   | "streams"
+  | "templates"
   | "admin";
 
 export type Prefill = {

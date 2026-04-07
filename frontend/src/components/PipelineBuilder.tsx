@@ -26,12 +26,21 @@ const emptyStage = (): StageInput => ({
   budget: "",
 });
 
+type TemplateStagePrefill = {
+  capability: string;
+  label: string;
+  budgetRange: [number, number];
+  description: string;
+};
+
 type Props = {
   prefill?: { agentId: number; provider: string; capability: string; price: bigint } | null;
   onClearPrefill?: () => void;
+  templatePrefill?: TemplateStagePrefill[] | null;
+  onClearTemplatePrefill?: () => void;
 };
 
-export function PipelineBuilder({ prefill, onClearPrefill }: Props = {}) {
+export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onClearTemplatePrefill }: Props = {}) {
   const { addToast } = useToast();
   const { address } = useAccount();
 
@@ -56,6 +65,21 @@ export function PipelineBuilder({ prefill, onClearPrefill }: Props = {}) {
       onClearPrefill?.();
     }
   }, [prefill]);
+
+  // Apply template prefill
+  useEffect(() => {
+    if (templatePrefill && templatePrefill.length > 0) {
+      const templateStages: StageInput[] = templatePrefill.map((ts) => ({
+        providerAddress: "",
+        providerAgentId: "",
+        capability: ts.capability,
+        budget: String(Math.round((ts.budgetRange[0] + ts.budgetRange[1]) / 2)),
+      }));
+      setStages(templateStages);
+      onClearTemplatePrefill?.();
+    }
+  }, [templatePrefill]);
+
   const [clientAgentId, setClientAgentId] = useState("0");
   const [currency, setCurrency] = useState<"usdc" | "eurc">("usdc");
   const [deadlineHours, setDeadlineHours] = useState("24");
