@@ -1,4 +1,5 @@
 import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead } from "@/lib/viemClient";
+import { formatUnits } from "viem";
 import { capabilityName, PIPELINE_STATUS, STAGE_STATUS } from "@/lib/constants";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 
