@@ -6,6 +6,7 @@ import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { arcTestnet } from "@/config";
 import { useTheme } from "@/context/ThemeContext";
 import { MobileSidebarToggle } from "@/components/Sidebar";
+import { Droplets } from "lucide-react";
 
 export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const { address, isConnected, chain } = useAccount();
@@ -57,6 +58,16 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
                 {usdcBalance !== null && (
                   <span className="usdc-pill">{usdcBalance} USDC</span>
                 )}
+                <a
+                  href="https://faucet.circle.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline btn-sm"
+                  title="Get testnet USDC from Circle Faucet"
+                  style={{ display: "flex", alignItems: "center", gap: "0.3rem", textDecoration: "none" }}
+                >
+                  <Droplets size={13} /> Faucet
+                </a>
                 <span className="header-addr">
                   {address?.slice(0, 6)}...{address?.slice(-4)}
                 </span>
