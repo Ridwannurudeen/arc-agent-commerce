@@ -8,7 +8,7 @@ AI agents define multi-step workflows, fund them atomically in USDC or EURC, and
 
 **PipelineOrchestrator** -- The core contract. Client defines ordered stages (e.g., audit -> deploy -> monitor), each assigned to a different agent. Total budget is locked in one transaction. The orchestrator creates ERC-8183 jobs per stage, manages transitions, and handles refunds on failure or cancellation.
 
-**CommerceHook** -- Evaluator bridge between ERC-8183 and the pipeline. Set as both hook and evaluator on every job. When a provider submits work, the hook either auto-approves or waits for client approval. On completion, records reputation on ERC-8004 ReputationRegistry and advances the pipeline. On rejection, halts the pipeline and records negative reputation.
+**CommerceHook** -- Evaluator bridge between ERC-8183 and the pipeline. Set as the **evaluator** on every job (hook is `address(0)` since ACP whitelists hooks). The evaluator has on-chain authority to call `complete()` or `reject()` on the ACP contract. When a provider submits work, the pipeline client calls `approveStage()` or `rejectStage()` through the hook. On completion, records reputation on ERC-8004 ReputationRegistry and advances the pipeline. On rejection, halts the pipeline and records negative reputation.
 
 **AgentPolicy** -- Human-configurable spending guardrails. Per-transaction limits, daily caps, counterparty allowlists. Enforced on pipeline creation.
 
@@ -31,10 +31,10 @@ ERC-8004 (Arc Native)
      |            |              |
 +----+------------+--------------+------+
 |   CommerceHook.sol (EVALUATOR)        |
-|   - Calls complete() on ERC-8183      |
-|   - Records reputation                |
+|   - Calls complete()/reject() on ACP  |
+|   - Records reputation on ERC-8004    |
 |   - Advances pipeline stages          |
-|   - Auto-approve or client-approve    |
+|   - Client-driven approval            |
 +----------------+----------------------+
                  |
 +----------------+----------------------+
@@ -75,7 +75,7 @@ Frontend: [arc.gudman.xyz](https://arc.gudman.xyz)
 
 1. Go to [arc.gudman.xyz](https://arc.gudman.xyz)
 2. Connect a wallet on Arc Testnet (Chain ID 5042002, RPC `https://rpc.testnet.arc.network`)
-3. Get test USDC from the [Arc faucet](https://faucet.testnet.arc.network)
+3. Get test USDC from the [Circle faucet](https://faucet.circle.com/) (select "Arc Testnet")
 4. Browse services, register an agent, or create a pipeline
 
 Or use the SDK:
@@ -96,7 +96,7 @@ for svc in client.list_all_services():
 # Build contracts
 forge build
 
-# Test (98 tests across 6 suites)
+# Test (134 Solidity tests across 6 suites)
 forge test
 
 # Deploy v3 via UUPS proxy
@@ -208,7 +208,7 @@ Next.js + wagmi + viem. Features:
 
 ## Tests
 
-98 tests across 5 suites:
+134 Solidity tests across 6 suites, plus 49 Python SDK unit tests:
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
@@ -239,7 +239,7 @@ forge test -v
 ## Key Design Decisions
 
 - **ERC-8183 composition, not reimplementation**: Each pipeline stage is a native Arc job. We don't rebuild escrow.
-- **CommerceHook as evaluator**: Guaranteed on-chain authority to complete/reject jobs. Hook callbacks are bonus, not relied upon.
+- **CommerceHook as evaluator, not hook**: ACP whitelists hooks, so we pass `address(0)` as hook and set CommerceHook as evaluator instead. The evaluator has the same on-chain authority to `complete()`/`reject()` jobs without needing whitelist approval. Auto-approve via `afterAction` callbacks would require hook whitelisting.
 - **Single currency per pipeline**: Honest about StableFX being permissioned. USDC or EURC, not both in one pipeline.
 - **All stages required**: No optional or skippable stages. Keeps the model simple and predictable.
 - **Validation checked, not gated**: ValidationRegistry is queried but doesn't block pipeline creation. Avoids chicken-and-egg.

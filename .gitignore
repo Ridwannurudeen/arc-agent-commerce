@@ -16,3 +16,8 @@ scripts/demo_wallets.json
 __pycache__/
 *.egg-info/
 sdk/dist/
+.pytest_cache/
+
+# Node
+node_modules/
+sdk-ts/dist/

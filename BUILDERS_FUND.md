@@ -16,7 +16,7 @@ Three composable contracts that form a pipeline orchestration layer on top of Ar
 
 1. **PipelineOrchestrator** -- Client defines ordered stages (audit -> deploy -> monitor), funds the total budget in one transaction (USDC or EURC), and the orchestrator creates ERC-8183 jobs per stage. Stages chain automatically -- completion of one activates the next. Failure halts the pipeline and refunds unstarted stages.
 
-2. **CommerceHook** -- Acts as the evaluator on every ERC-8183 job in the pipeline. When work is submitted, the hook either auto-approves or waits for client approval. On completion, it records reputation on ERC-8004 ReputationRegistry and tells the orchestrator to advance. On rejection, it halts the pipeline and records negative reputation.
+2. **CommerceHook** -- Acts as the **evaluator** on every ERC-8183 job in the pipeline (hook is `address(0)` since ACP whitelists hooks). The evaluator has on-chain authority to call `complete()` or `reject()`. When a provider submits work, the pipeline client approves or rejects through the hook. On completion, it records reputation on ERC-8004 ReputationRegistry and tells the orchestrator to advance. On rejection, it halts the pipeline and records negative reputation.
 
 3. **AgentPolicy** -- Human-configurable spending guardrails. Per-transaction limits, daily caps, counterparty restrictions. Enforced on pipeline creation so agents can't overspend.
 
@@ -35,13 +35,15 @@ If you deploy this on Ethereum or Solana, it has no ERC-8183 to compose. It beco
 
 - 4 protocol contracts (PipelineOrchestrator, CommerceHook, AgentPolicy, StreamEscrow) -- all UUPS upgradeable
 - 2 marketplace contracts (ServiceMarket, ServiceEscrow) with dispute resolution
-- 110+ passing tests across 6 test suites (unit + integration)
+- 134 Solidity tests across 6 test suites + 49 Python SDK unit tests
 - Python SDK with pipeline, streaming, service, and agreement operations
+- TypeScript SDK (`@arc-commerce/sdk`) with full pipeline and service client
 - LangChain adapter for agent framework integration (4 tools)
 - Next.js frontend: marketplace, agent directory, pipeline builder, stream manager, ACP explorer, activity feed
 - Autonomous 3-agent demo (BUILDER -> AUDITOR -> DEPLOYER)
 - StreamEscrow with heartbeat-gated linear vesting, pause/resume, and pro-rata cancellation
 - Full CI pipeline (Solidity, Python SDK, frontend build)
+- Public REST API with 7 endpoints (agents, jobs, services, pipelines, stats, docs)
 
 ```python
 # Create a multi-stage pipeline in 5 lines
@@ -73,11 +75,21 @@ Protocol integrates with ERC-8183 which handles escrow natively. Value accrues f
 
 ## Roadmap
 
-**Now**: Core v3 contracts, SDK, frontend, demo, 98 tests -- all complete on testnet.
+**Now**: Core v3 contracts, SDKs (Python + TypeScript), frontend, demo, 183 tests -- all complete on testnet. Pipeline #0 completed end-to-end on-chain with reputation recorded.
 
-**Next**: Mainnet deployment. Capability marketplace (agents register what they can do, orchestrator auto-matches). Recurring pipeline templates.
+**Next**: Mainnet deployment. Hook whitelisting with Arc team (enables auto-approve via `afterAction` callbacks). SDK publishing to PyPI and npm. Indexed API for historical queries.
 
-**Later**: Pipeline analytics dashboard. Cross-pipeline dependencies. Agent reputation scoring.
+**Later**: Capability marketplace (agents register what they can do, orchestrator auto-matches). Recurring pipeline templates. Cross-pipeline dependencies. EURC/StableFX-aware pipeline templates.
+
+## Grant Ask
+
+Funding will be used to productionize ACP as an open Arc primitive:
+- **Security audit** -- Professional review of all 7 contracts before mainnet
+- **Mainnet deployment** -- Deploy, verify, and monitor on Arc mainnet
+- **SDK publishing** -- Publish `arc-commerce` (PyPI) and `@arc-commerce/sdk` (npm) with pinned versions and quickstart guides
+- **Indexed API** -- Subgraph or indexer for jobs, agents, pipelines, and reputation so other Arc builders can integrate without reading contracts directly
+- **Hook whitelisting** -- Work with Arc team to whitelist CommerceHook, enabling auto-approve and richer agent autonomy
+- **Documentation** -- Integration guides, architecture docs, and sample apps for the Arc ecosystem
 
 ## Team
 

@@ -28,10 +28,10 @@ import type {
 } from './types.js';
 import { PipelineStatus, StageStatus, StreamStatus } from './types.js';
 
-import ServiceMarketABI from './abi/ServiceMarket.json' with { type: 'json' };
-import PipelineOrchestratorABI from './abi/PipelineOrchestrator.json' with { type: 'json' };
-import CommerceHookABI from './abi/CommerceHook.json' with { type: 'json' };
-import StreamEscrowABI from './abi/StreamEscrow.json' with { type: 'json' };
+import ServiceMarketABI from './abi/ServiceMarket.json';
+import PipelineOrchestratorABI from './abi/PipelineOrchestrator.json';
+import CommerceHookABI from './abi/CommerceHook.json';
+import StreamEscrowABI from './abi/StreamEscrow.json';
 
 const USDC_DECIMALS = 6;
 const toUnits = (usdc: number): bigint => BigInt(Math.round(usdc * 10 ** USDC_DECIMALS));
