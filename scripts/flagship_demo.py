@@ -6,7 +6,7 @@ A founder asks an AI agent to ship a product update. The agent hires an
 auditor and a deployer. Each stage is escrowed in USDC, validated, paid,
 and recorded to ERC-8004 reputation.
 
-3 agents. 2 stages. $4.00 USDC. ERC-8183 + ERC-8004. Fully on-chain.
+3 agents. 2 stages. $3.50 USDC. ERC-8183 + ERC-8004. Fully on-chain.
 
 Usage:
     # Option A: env vars
@@ -94,7 +94,7 @@ def banner():
     print("|  FLAGSHIP DEMO: Autonomous Agent Workflow on Arc L1" + " " * 9 + "|")
     print("+" + "=" * 62 + "+")
     print(f"|  \"Ship a product update\" -> Audit -> Deploy" + " " * 17 + "|")
-    print(f"|  3 agents  |  2 stages  |  $4.00 USDC  |  ERC-8183 + 8004  |")
+    print(f"|  3 agents  |  2 stages  |  $3.50 USDC  |  ERC-8183 + 8004  |")
     print("+" + "=" * 62 + "+")
     print(f"{RESET}")
 
@@ -217,7 +217,7 @@ def main():
     print(f"  {MAGENTA}AUDITOR{RESET}   (Agent #{auditor_agent_id})  {fmt_addr(auditor.account.address)}  Balance: {fmt_usdc(auditor_bal)} USDC")
     print(f"  {MAGENTA}DEPLOYER{RESET}  (Agent #{deployer_agent_id})  {fmt_addr(deployer_sdk.account.address)}  Balance: {fmt_usdc(deployer_bal)} USDC")
 
-    required = 4_000_000  # $4.00
+    required = 3_500_000  # $3.50
     if builder_bal < required:
         print(f"\n  {RED}BUILDER needs {fmt_usdc(required)} but only has {fmt_usdc(builder_bal)}{RESET}")
         sys.exit(1)
@@ -228,14 +228,14 @@ def main():
     # PHASE 2: PIPELINE CREATION
     # ═════════════════════════════════════════════════════════════════
     section("STEP 1")
-    print(f"  BUILDER creates pipeline: Audit -> Deploy ($4.00 USDC)\n")
+    print(f"  BUILDER creates pipeline: Audit -> Deploy ($3.50 USDC)\n")
 
     stages_config = [
         {
             "provider_agent_id": auditor_agent_id,
             "provider_address": auditor.account.address,
             "capability": "smart_contract_audit",
-            "budget_usdc": 2.50,
+            "budget_usdc": 2.00,
         },
         {
             "provider_agent_id": deployer_agent_id,
@@ -269,9 +269,9 @@ def main():
     stage1_job = all_stages[0].job_id
     stage2_job = all_stages[1].job_id
 
-    print(f"  {GREEN}OK{RESET} Stage 1: ACP Job #{stage1_job} (smart_contract_audit, $2.50)")
+    print(f"  {GREEN}OK{RESET} Stage 1: ACP Job #{stage1_job} (smart_contract_audit, $2.00)")
     print(f"  {GREEN}OK{RESET} Stage 2: ACP Job #{stage2_job} (contract_deployment, $1.50)")
-    print(f"  {DIM}Total: $4.00 USDC locked atomically via PipelineOrchestrator{RESET}")
+    print(f"  {DIM}Total: $3.50 USDC locked atomically via PipelineOrchestrator{RESET}")
 
     time.sleep(2)
 
@@ -342,7 +342,7 @@ def main():
         traceback.print_exc()
         sys.exit(1)
 
-    star(f"Stage 1 COMPLETED -- Auditor earned $2.50 USDC")
+    star(f"Stage 1 COMPLETED -- Auditor earned $2.00 USDC")
     star(f"Reputation recorded on ERC-8004")
 
     time.sleep(2)
@@ -350,7 +350,9 @@ def main():
     # Refresh stages to confirm advancement
     all_stages = builder.get_stages(pipeline_id)
     pipeline = builder.get_pipeline(pipeline_id)
+    stage2_job = all_stages[1].job_id  # Update job ID now that stage 2 is activated
     print(f"\n  {DIM}Pipeline advancing to stage 2 (current_stage: {pipeline.current_stage}/{pipeline.stage_count}){RESET}")
+    print(f"  {DIM}Stage 2 ACP Job: #{stage2_job}{RESET}")
 
     time.sleep(2)
 

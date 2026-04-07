@@ -50,7 +50,8 @@ function useCopyClipboard(timeout = 2000) {
 
 /* ─── Address formatter ─── */
 function truncAddr(s: string): string {
-  return `${s.slice(0, 6)}...${s.slice(-4)}`;
+  const v = s || "";
+  return `${v.slice(0, 6)}...${v.slice(-4)}`;
 }
 
 /* ─── Section wrapper ─── */
@@ -260,10 +261,10 @@ function useAgentStats(agentId: number, ownerAddr: string | undefined): AgentSta
         if (r.status !== "success" || !r.result) continue;
         const stages = r.result as any[];
         for (const s of stages) {
-          const provAgentId = Number(s.providerAgentId ?? s[0]);
+          const provAgentId = Number(s.providerAgentId ?? s[0] ?? 0);
           if (provAgentId !== agentId) continue;
           pipelineTotal++;
-          const st = Number(s.status ?? s[5]);
+          const st = Number(s.status ?? s[5] ?? 0);
           if (st === 2) pipelineCompleted++;
           if (st === 3) pipelineFailed++;
         }
@@ -277,15 +278,15 @@ function useAgentStats(agentId: number, ownerAddr: string | undefined): AgentSta
         const r = jobsRaw[i];
         if (r.status !== "success" || !r.result) continue;
         const j = r.result as any;
-        const client = (j.client ?? j[1] ?? "").toLowerCase();
-        const provider = (j.provider ?? j[2] ?? "").toLowerCase();
+        const client = ((j.client ?? j[1] ?? "") as string).toLowerCase();
+        const provider = ((j.provider ?? j[2] ?? "") as string).toLowerCase();
         const isClient = client === ownerLower;
         const isProvider = provider === ownerLower;
         if (!isClient && !isProvider) continue;
 
         const status = Number(j.status ?? j[7] ?? 0);
         const budget = BigInt(j.budget ?? j[5] ?? 0);
-        const description = j.description ?? j[4] ?? "";
+        const description = (j.description ?? j[4] ?? "") as string;
 
         jobs.push({
           id: i + 1,

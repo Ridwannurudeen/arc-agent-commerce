@@ -88,7 +88,7 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
     for (const r of jobsRaw) {
       if (r.status !== "success" || !r.result) continue;
       const j = r.result as any;
-      const provider = ((j.provider ?? j[2] ?? "") as string).toLowerCase();
+      const provider = ((j.provider ?? j[2] ?? "") as string || "").toLowerCase();
       if (provider === "0x0000000000000000000000000000000000000000") continue;
       if (!map.has(provider)) map.set(provider, { completed: 0, total: 0 });
       const stats = map.get(provider)!;
@@ -115,10 +115,10 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
         return {
           serviceId: i,
           agentId: Number(d[0] ?? 0),
-          provider: (d[1] ?? "") as string,
-          capabilityHash: (d[2] ?? "") as string,
+          provider: ((d[1] ?? "") as string) || "",
+          capabilityHash: ((d[2] ?? "") as string) || "",
           pricePerTask: BigInt(d[3] ?? 0),
-          metadataURI: (d[4] ?? "") as string,
+          metadataURI: ((d[4] ?? "") as string) || "",
           active: !!d[5],
         };
       })

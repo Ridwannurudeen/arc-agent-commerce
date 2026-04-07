@@ -126,8 +126,8 @@ export function ActivityFeed({ onViewAgent }: Props) {
         if (r.status !== "success" || !r.result) return;
         const arr = r.result as unknown[];
         list.push({
-          type: "pipeline", id: i, timestamp: arr[8] as bigint,
-          data: { clientAgentId: Number(arr[0]), totalBudget: arr[3] as bigint, stageCount: Number(arr[6]), status: Number(arr[7]) },
+          type: "pipeline", id: i, timestamp: (arr[8] as bigint) ?? BigInt(0),
+          data: { clientAgentId: Number(arr[0] ?? 0), totalBudget: (arr[3] as bigint) ?? BigInt(0), stageCount: Number(arr[6] ?? 0), status: Number(arr[7] ?? 0) },
         });
       });
     }
@@ -224,7 +224,7 @@ export function ActivityFeed({ onViewAgent }: Props) {
           if (item.type === "acp-job") {
             const j = item.data;
             const statusLabel = JOB_STATUS[j.status] ?? "Unknown";
-            const addr = (s: string) => `${s.slice(0, 6)}...${s.slice(-4)}`;
+            const addr = (s: string) => { const v = s || ""; return `${v.slice(0, 6)}...${v.slice(-4)}`; };
             return (
               <motion.div
                 key={`acp-${item.id}`}
@@ -305,7 +305,7 @@ export function ActivityFeed({ onViewAgent }: Props) {
 
           // Agreement
           const agr = item.data as AgreementData;
-          const statusLabel = STATUS_LABELS[agr.status] ?? "unknown";
+          const statusLabel = (STATUS_LABELS[agr.status] ?? "unknown") as string;
           return (
             <motion.div
               key={`agr-${item.id}`}

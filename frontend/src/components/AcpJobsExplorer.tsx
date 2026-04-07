@@ -72,10 +72,10 @@ export function AcpJobsExplorer({ onViewAgent }: { onViewAgent: (agentId: number
   }, [jobs]);
 
   const filtered = statusFilter === "all" ? jobs : jobs.filter((j) => j.status === statusFilter);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageJobs = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const addr = (s: string) => `${s.slice(0, 6)}...${s.slice(-4)}`;
+  const addr = (s: string) => { const v = s || ""; return `${v.slice(0, 6)}...${v.slice(-4)}`; };
   const isZeroAddr = (s: string) => s === "0x0000000000000000000000000000000000000000";
 
   return (

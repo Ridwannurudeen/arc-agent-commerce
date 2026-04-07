@@ -77,14 +77,14 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
   }, [ownersRaw, urisRaw, ids]);
 
   const isLoading = loadingOwners || loadingURIs;
-  const addr = (s: string) => `${s.slice(0, 6)}...${s.slice(-4)}`;
+  const addr = (s: string) => { const v = s || ""; return `${v.slice(0, 6)}...${v.slice(-4)}`; };
 
   const handleSearch = () => {
     const id = parseInt(searchId);
     if (id > 0) onViewAgent(id);
   };
 
-  const uniqueOwners = new Set(agents.map((a) => (a.owner ?? "").toLowerCase())).size;
+  const uniqueOwners = new Set(agents.map((a) => (a.owner || "").toLowerCase())).size;
 
   return (
     <div>

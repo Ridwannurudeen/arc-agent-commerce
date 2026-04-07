@@ -1141,6 +1141,20 @@ header h1 span {
   }
 }
 
+/* ── Validator Grid ── */
+.validator-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+  .validator-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .service-card {
   background: var(--bg-card);
   border: 1px solid var(--border);

@@ -61,21 +61,21 @@ export function PipelineTracker({ pipelineId }: Props) {
   const pipelineArr = pipelineRaw as unknown[] | undefined;
   const pipeline: PipelineData | undefined = pipelineArr
     ? {
-        clientAgentId: pipelineArr[0] as bigint,
-        client: pipelineArr[1] as string,
-        currency: pipelineArr[2] as string,
-        totalBudget: pipelineArr[3] as bigint,
-        totalSpent: pipelineArr[4] as bigint,
-        currentStage: pipelineArr[5] as bigint,
-        stageCount: pipelineArr[6] as bigint,
-        status: Number(pipelineArr[7]),
-        createdAt: pipelineArr[8] as bigint,
-        deadline: pipelineArr[9] as bigint,
+        clientAgentId: (pipelineArr[0] as bigint) ?? BigInt(0),
+        client: (pipelineArr[1] as string) ?? "",
+        currency: (pipelineArr[2] as string) ?? "",
+        totalBudget: (pipelineArr[3] as bigint) ?? BigInt(0),
+        totalSpent: (pipelineArr[4] as bigint) ?? BigInt(0),
+        currentStage: (pipelineArr[5] as bigint) ?? BigInt(0),
+        stageCount: (pipelineArr[6] as bigint) ?? BigInt(0),
+        status: Number(pipelineArr[7] ?? 0),
+        createdAt: (pipelineArr[8] as bigint) ?? BigInt(0),
+        deadline: (pipelineArr[9] as bigint) ?? BigInt(0),
       }
     : undefined;
 
   const stages = (stagesRaw as StageData[] | undefined) ?? [];
-  const isClient = pipeline && address && (pipeline.client ?? "").toLowerCase() === address.toLowerCase();
+  const isClient = pipeline && address && (pipeline.client || "").toLowerCase() === address.toLowerCase();
   const isActive = pipeline?.status === 0;
   const activeStageIndex = pipeline ? Number(pipeline.currentStage) : -1;
   const activeStage = stages[activeStageIndex];
@@ -105,7 +105,7 @@ export function PipelineTracker({ pipelineId }: Props) {
       if (r?.status === "success" && r.result) {
         const job = r.result as any;
         jobStatusMap.set(Number(s.jobId), {
-          status: Number(job.status ?? job[7]),
+          status: Number(job.status ?? job[7] ?? 0),
           budget: BigInt(job.budget ?? job[5] ?? 0),
         });
       }

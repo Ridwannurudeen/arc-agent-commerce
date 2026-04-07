@@ -64,7 +64,7 @@ export function IncomingJobs() {
       const stages = r.result as any[];
       for (let s = 0; s < stages.length; s++) {
         const stage = stages[s];
-        const provAddr = (stage.providerAddress ?? stage[1] ?? "") as string;
+        const provAddr = ((stage.providerAddress ?? stage[1] ?? "") as string) || "";
         if (provAddr && provAddr.toLowerCase() === address.toLowerCase()) {
           result.push({ pipelineId: p, stageIndex: s, stage });
         }
@@ -74,7 +74,7 @@ export function IncomingJobs() {
   }, [stagesRaw, address]);
 
   const jobIds = myStages.map((s) => {
-    const jobId = s.stage.jobId ?? s.stage[4];
+    const jobId = s.stage.jobId ?? s.stage[4] ?? 0;
     return Number(jobId);
   });
 
@@ -98,9 +98,9 @@ export function IncomingJobs() {
         pipelineId: s.pipelineId,
         stageIndex: s.stageIndex,
         jobId: jobIds[i],
-        capabilityHash: (s.stage.capabilityHash ?? s.stage[2]) as string,
+        capabilityHash: (s.stage.capabilityHash ?? s.stage[2] ?? "") as string,
         budget: BigInt(s.stage.budget ?? s.stage[3] ?? 0),
-        jobStatus: job ? Number(job.status ?? job[7]) : -1,
+        jobStatus: job ? Number(job.status ?? job[7] ?? 0) : -1,
         jobBudget: job ? BigInt(job.budget ?? job[5] ?? 0) : BigInt(0),
       };
     });

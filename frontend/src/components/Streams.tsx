@@ -292,16 +292,33 @@ function StreamCard({ streamId, address }: { streamId: number; address: `0x${str
 
   if (!streamRaw) return null;
 
-  const s = streamRaw as {
+  const raw = streamRaw as {
     client: string; provider: string; clientAgentId: bigint; providerAgentId: bigint;
     currency: string; deposit: bigint; withdrawn: bigint; startTime: bigint; endTime: bigint;
     heartbeatInterval: bigint; lastHeartbeat: bigint; missedBeats: bigint; pausedAt: bigint;
     totalPausedTime: bigint; status: number;
   };
+  const s = {
+    client: raw.client ?? "",
+    provider: raw.provider ?? "",
+    clientAgentId: raw.clientAgentId ?? BigInt(0),
+    providerAgentId: raw.providerAgentId ?? BigInt(0),
+    currency: raw.currency ?? "",
+    deposit: raw.deposit ?? BigInt(0),
+    withdrawn: raw.withdrawn ?? BigInt(0),
+    startTime: raw.startTime ?? BigInt(0),
+    endTime: raw.endTime ?? BigInt(0),
+    heartbeatInterval: raw.heartbeatInterval ?? BigInt(0),
+    lastHeartbeat: raw.lastHeartbeat ?? BigInt(0),
+    missedBeats: raw.missedBeats ?? BigInt(0),
+    pausedAt: raw.pausedAt ?? BigInt(0),
+    totalPausedTime: raw.totalPausedTime ?? BigInt(0),
+    status: raw.status ?? 0,
+  };
 
   const statusLabel = STREAM_STATUS[s.status] ?? "Unknown";
-  const isClient = address?.toLowerCase() === (s.client ?? "").toLowerCase();
-  const isProvider = address?.toLowerCase() === (s.provider ?? "").toLowerCase();
+  const isClient = address?.toLowerCase() === (s.client || "").toLowerCase();
+  const isProvider = address?.toLowerCase() === (s.provider || "").toLowerCase();
 
   const now = Math.floor(Date.now() / 1000);
   const startTime = Number(s.startTime);
@@ -385,8 +402,8 @@ function StreamCard({ streamId, address }: { streamId: number; address: `0x${str
 
       {/* Addresses */}
       <div style={{ display: "flex", gap: "1.25rem", fontSize: "0.75rem", color: "var(--text-dim)", marginTop: "0.35rem", flexWrap: "wrap" }}>
-        <span>Client: {s.client.slice(0, 6)}...{s.client.slice(-4)} (Agent #{Number(s.clientAgentId)})</span>
-        <span>Provider: {s.provider.slice(0, 6)}...{s.provider.slice(-4)} (Agent #{Number(s.providerAgentId)})</span>
+        <span>Client: {(s.client ?? "").slice(0, 6)}...{(s.client ?? "").slice(-4)} (Agent #{Number(s.clientAgentId ?? 0)})</span>
+        <span>Provider: {(s.provider ?? "").slice(0, 6)}...{(s.provider ?? "").slice(-4)} (Agent #{Number(s.providerAgentId ?? 0)})</span>
       </div>
 
       {/* Progress bar */}

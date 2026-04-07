@@ -1,0 +1,20 @@
+{
+  "name": "@arc-commerce/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Agent Commerce Protocol on Arc L1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.47.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.0"
+  },
+  "license": "MIT"
+}

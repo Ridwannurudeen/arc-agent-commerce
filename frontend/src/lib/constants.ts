@@ -18,6 +18,7 @@ export const KNOWN_CAPABILITIES = Object.fromEntries(
 );
 
 export function capabilityName(hash: string): string {
+  if (!hash) return "Unknown";
   return KNOWN_CAPABILITIES[hash.toLowerCase()] ?? `${hash.slice(0, 10)}...`;
 }
 

@@ -45,6 +45,7 @@ const NAV: NavSection[] = [
     items: [
       { key: "acp-jobs", label: "ACP Jobs", icon: Briefcase },
       { key: "agent-directory", label: "Agent Directory", icon: Users },
+      { key: "validators", label: "Validators", icon: Shield },
     ],
   },
   {

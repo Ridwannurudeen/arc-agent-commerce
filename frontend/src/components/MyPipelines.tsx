@@ -94,13 +94,13 @@ export function MyPipelines() {
           const result = batchPipelines?.[idx];
           const raw = result && result.status === "success" ? (result.result as unknown[]) : undefined;
 
-          const status = raw ? Number(raw[7]) : -1;
+          const status = raw ? Number(raw[7] ?? 0) : -1;
           const statusLabel = PIPELINE_STATUS[status] ?? "Loading";
-          const totalBudget = raw ? (raw[3] as bigint) : BigInt(0);
-          const totalSpent = raw ? (raw[4] as bigint) : BigInt(0);
-          const stageCount = raw ? Number(raw[6]) : 0;
-          const currentStage = raw ? Number(raw[5]) : 0;
-          const createdAt = raw ? Number(raw[8]) : 0;
+          const totalBudget = raw ? ((raw[3] as bigint) ?? BigInt(0)) : BigInt(0);
+          const totalSpent = raw ? ((raw[4] as bigint) ?? BigInt(0)) : BigInt(0);
+          const stageCount = raw ? Number(raw[6] ?? 0) : 0;
+          const currentStage = raw ? Number(raw[5] ?? 0) : 0;
+          const createdAt = raw ? Number(raw[8] ?? 0) : 0;
           const isExpanded = expandedId === id;
 
           const completedStages = status === 1 ? stageCount : Math.min(currentStage, stageCount);
