@@ -1,5 +1,3 @@
-import { formatUnits } from "viem";
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS } from "@/lib/viemClient";
 import { capabilityName } from "@/lib/constants";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
@@ -70,7 +68,7 @@ export async function GET(
         args: [sid],
       }));
 
-      const serviceResults = await client.multicall({ contracts: serviceCalls });
+      const serviceResults = await batchRead(serviceCalls);
 
       services = serviceResults
         .map((r, i) => {
@@ -110,7 +108,7 @@ export async function GET(
           args: [BigInt(i + 1)],
         }));
 
-        const jobResults = await client.multicall({ contracts: jobCalls });
+        const jobResults = await batchRead(jobCalls);
         const ownerLower = owner.toLowerCase();
 
         for (const r of jobResults) {

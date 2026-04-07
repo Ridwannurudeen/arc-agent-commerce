@@ -1,4 +1,4 @@
-import { createPublicClient, http, defineChain } from "viem";
+import { createPublicClient, http, defineChain, type MulticallParameters } from "viem";
 
 export const arcTestnet = defineChain({
   id: 5042002,
@@ -14,12 +14,13 @@ export const arcTestnet = defineChain({
 });
 
 export const client = createPublicClient({
-  chain: arcTestnet,
+  chain: { ...arcTestnet, contracts: {} },
   transport: http("https://rpc.testnet.arc.network", {
     timeout: 15_000,
     retryCount: 3,
     retryDelay: 1000,
   }),
+  batch: { multicall: false },
 });
 
 export const CONTRACTS = {
@@ -56,4 +57,27 @@ export function errorResponse(message: string, status = 500) {
     status,
     headers: CORS_HEADERS,
   });
+}
+
+/**
+ * Drop-in replacement for client.multicall() since Arc Testnet
+ * doesn't have a multicall3 contract deployed.
+ * Executes all calls in parallel via Promise.allSettled.
+ */
+export async function batchRead(calls: { address: `0x${string}`; abi: any; functionName: string; args?: any[] }[]) {
+  const results = await Promise.allSettled(
+    calls.map((c) =>
+      client.readContract({
+        address: c.address,
+        abi: c.abi,
+        functionName: c.functionName,
+        args: c.args,
+      })
+    )
+  );
+  return results.map((r) =>
+    r.status === "fulfilled"
+      ? { status: "success" as const, result: r.value }
+      : { status: "failure" as const, result: undefined }
+  );
 }

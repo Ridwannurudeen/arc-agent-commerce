@@ -1,4 +1,3 @@
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS } from "@/lib/viemClient";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
@@ -67,7 +66,7 @@ export async function GET() {
         args: [BigInt(i)],
       }));
 
-      const serviceResults = await client.multicall({ contracts: serviceCalls });
+      const serviceResults = await batchRead(serviceCalls);
       for (const r of serviceResults) {
         if (r.status === "success" && r.result) {
           const d = r.result as any;
@@ -85,7 +84,7 @@ export async function GET() {
         args: [BigInt(i + 1)],
       }));
 
-      const jobResults = await client.multicall({ contracts: jobCalls });
+      const jobResults = await batchRead(jobCalls);
       for (const r of jobResults) {
         if (r.status === "success" && r.result) {
           const j = r.result as any;

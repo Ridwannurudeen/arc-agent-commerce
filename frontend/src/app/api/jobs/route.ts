@@ -1,5 +1,3 @@
-import { formatUnits } from "viem";
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS } from "@/lib/viemClient";
 import { JOB_STATUS } from "@/lib/constants";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 
@@ -35,7 +33,7 @@ export async function GET(request: Request) {
       args: [BigInt(i + 1)],
     }));
 
-    const results = await client.multicall({ contracts: jobCalls });
+    const results = await batchRead(jobCalls);
 
     let jobs = results
       .map((r, i) => {

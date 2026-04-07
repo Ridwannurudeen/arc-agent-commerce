@@ -1,5 +1,3 @@
-import { formatUnits } from "viem";
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS } from "@/lib/viemClient";
 import { capabilityName, PIPELINE_STATUS, STAGE_STATUS } from "@/lib/constants";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 
@@ -31,7 +29,7 @@ export async function GET() {
       args: [BigInt(i)],
     }));
 
-    const pipelineResults = await client.multicall({ contracts: pipelineCalls });
+    const pipelineResults = await batchRead(pipelineCalls);
 
     // Fetch stages for each pipeline
     const stageCalls = Array.from({ length: pipelineCount }, (_, i) => ({
@@ -41,7 +39,7 @@ export async function GET() {
       args: [BigInt(i)],
     }));
 
-    const stageResults = await client.multicall({ contracts: stageCalls });
+    const stageResults = await batchRead(stageCalls);
 
     const pipelines = pipelineResults
       .map((r, i) => {

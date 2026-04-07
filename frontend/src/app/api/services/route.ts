@@ -1,5 +1,3 @@
-import { formatUnits } from "viem";
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS } from "@/lib/viemClient";
 import { capabilityName } from "@/lib/constants";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 
@@ -35,7 +33,7 @@ export async function GET(request: Request) {
       args: [BigInt(i)],
     }));
 
-    const results = await client.multicall({ contracts: calls as any });
+    const results = await batchRead(calls as any);
 
     let services = results
       .map((r, i) => {

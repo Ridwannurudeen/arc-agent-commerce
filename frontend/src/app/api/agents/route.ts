@@ -1,4 +1,3 @@
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS } from "@/lib/viemClient";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 
 export const dynamic = "force-dynamic";
@@ -61,8 +60,8 @@ export async function GET(request: Request) {
     }));
 
     const [ownerResults, uriResults] = await Promise.all([
-      client.multicall({ contracts: ownerCalls }),
-      client.multicall({ contracts: uriCalls }),
+      batchRead(ownerCalls),
+      batchRead(uriCalls),
     ]);
 
     const agents = ids
