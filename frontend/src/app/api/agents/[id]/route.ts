@@ -1,3 +1,4 @@
+import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead } from "@/lib/viemClient";
 import { capabilityName } from "@/lib/constants";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";

@@ -1,3 +1,4 @@
+import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead } from "@/lib/viemClient";
 import { JOB_STATUS } from "@/lib/constants";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 

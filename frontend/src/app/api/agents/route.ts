@@ -1,3 +1,4 @@
+import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead } from "@/lib/viemClient";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 
 export const dynamic = "force-dynamic";
