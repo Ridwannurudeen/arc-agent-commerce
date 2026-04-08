@@ -1,115 +1,99 @@
 # Agent Commerce Protocol
 
-Multi-agent pipeline orchestration on [Arc](https://arc.network) (Circle's stablecoin-native L1). Composes Arc's native [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) job escrow and [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) identity/reputation into conditional multi-stage agent workflows with atomic settlement.
+[![CI](https://github.com/Ridwannurudeen/arc-agent-commerce/actions/workflows/ci.yml/badge.svg)](https://github.com/Ridwannurudeen/arc-agent-commerce/actions/workflows/ci.yml) [![Live Demo](https://img.shields.io/badge/demo-arc.gudman.xyz-blue)](https://arc.gudman.xyz) [![Arc Testnet](https://img.shields.io/badge/network-Arc%20Testnet-green)](https://testnet.arcscan.app)
 
-## What It Does
+The composable execution layer for autonomous economic activity on Arc. Multi-agent pipeline orchestration with atomic USDC settlement, built on Arc's native [ERC-8183](https://eips.ethereum.org/EIPS/eip-8183) job escrow and [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) identity/reputation.
 
-AI agents define multi-step workflows, fund them atomically in USDC or EURC, and execute them stage-by-stage through Arc's native infrastructure. Each stage is an ERC-8183 job. Stages chain automatically -- completion of one activates the next. Failure halts the pipeline and refunds unstarted stages.
+![Landing Page](docs/screenshots/landing.png)
 
-**PipelineOrchestrator** -- The core contract. Client defines ordered stages (e.g., audit -> deploy -> monitor), each assigned to a different agent. Total budget is locked in one transaction. The orchestrator creates ERC-8183 jobs per stage, manages transitions, and handles refunds on failure or cancellation.
+---
 
-**CommerceHook** -- Evaluator bridge between ERC-8183 and the pipeline. Set as the **evaluator** on every job (hook is `address(0)` since ACP whitelists hooks). The evaluator has on-chain authority to call `complete()` or `reject()` on the ACP contract. When a provider submits work, the pipeline client calls `approveStage()` or `rejectStage()` through the hook. On completion, records reputation on ERC-8004 ReputationRegistry and advances the pipeline. On rejection, halts the pipeline and records negative reputation.
+## Why This Exists
 
-**AgentPolicy** -- Human-configurable spending guardrails. Per-transaction limits, daily caps, counterparty allowlists. Enforced on pipeline creation.
+AI agents need to collaborate, not just transact. Today, Agent A can hire Agent B for a single task, but real-world agent workflows are multi-step: audit code, then deploy it, then monitor it. If the audit fails, the deployment should never start.
 
-All three contracts use **UUPS proxy** (ERC-1967), Pausable, and Ownable2Step.
+Arc has the primitives -- ERC-8183 for job escrow, ERC-8004 for identity/reputation -- but they're standalone. **Agent Commerce Protocol is the composition layer that chains them into coordinated multi-agent workflows.**
 
-## Architecture
+## How It Works
 
 ```
-ERC-8004 (Arc Native)
-+----------+-------------+--------------+
-| Identity | Reputation  | Validation   |
-| Registry | Registry    | Registry     |
-+----+-----+------+------+-------+------+
-     |            |              |
-     |       +----+-----+       |
-     |       | ERC-8183 |       |
-     |       | (Native  |       |
-     |       |  Jobs)   |       |
-     |       +----+-----+       |
-     |            |              |
-+----+------------+--------------+------+
-|   CommerceHook.sol (EVALUATOR)        |
-|   - Calls complete()/reject() on ACP  |
-|   - Records reputation on ERC-8004    |
-|   - Advances pipeline stages          |
-|   - Client-driven approval            |
-+----------------+----------------------+
-                 |
-+----------------+----------------------+
-|   PipelineOrchestrator.sol            |
-|   - Multi-stage workflows             |
-|   - Single-currency per pipeline      |
-|   - Atomic funding + partial refund   |
-|   - Creates ERC-8183 jobs per stage   |
-+----------------+----------------------+
-                 |
-+----------------+----------------------+
-|   AgentPolicy.sol                     |
-|   - Per-tx and daily limits           |
-|   - Counterparty restrictions         |
-|   - UTC daily reset                   |
-+---------------------------------------+
+Client creates pipeline    Stages execute sequentially    Reputation recorded
+     |                           |                              |
+     v                           v                              v
+ +---------+    +-------+    +-------+    +-------+    +--------+
+ | Fund    | -> | Stage | -> | Stage | -> | Stage | -> | ERC-   |
+ | Budget  |    |   1   |    |   2   |    |   3   |    | 8004   |
+ | (USDC)  |    | Audit |    | Deploy|    |Monitor|    | Reputa-|
+ +---------+    +-------+    +-------+    +-------+    | tion   |
+                  |   |        |   |        |   |      +--------+
+                  v   v        v   v        v   v
+                Pass Fail    Pass Fail    Pass Fail
+                  |    |       |    |       |    |
+                  |   Halt    |   Halt     |   Halt
+                  |  +Refund  |  +Refund   |  +Refund
+                  v           v            v
+               Advance    Advance      Complete
 ```
 
-## Deployed Contracts (Arc Testnet)
-
-| Contract | Address |
-|----------|---------|
-| PipelineOrchestrator (v3) | `0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720` |
-| CommerceHook (v3) | `0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f` |
-| AgentPolicy (v3) | `0xB172b27Af9E084D574817b080C04a7629c606c0E` |
-| StreamEscrow (v4) | `0x1501566F49290d5701546D7De837Cb516c121Fb6` |
-| ServiceMarket (v2) | `0x046e44E2DE09D2892eCeC4200bB3ecD298892f88` |
-| ServiceEscrow (v2) | `0x365889e057a3ddABADB542e19f8199650B4df4Cf` |
-| SpendingPolicy (v2) | `0x072bFf95A62Ef1109dBE0122f734D6bC649E2634` |
-
-**Arc Testnet**: Chain ID 5042002, RPC `https://rpc.testnet.arc.network`, Explorer `https://testnet.arcscan.app`
+Each stage is a native ERC-8183 job. CommerceHook acts as evaluator -- on approval it records reputation and advances the pipeline. On rejection it halts and refunds unstarted stages.
 
 ## Live Demo
 
-Frontend: [arc.gudman.xyz](https://arc.gudman.xyz)
+**[arc.gudman.xyz](https://arc.gudman.xyz)** -- connect a wallet on Arc Testnet to try it.
 
-## Try It (2 minutes)
+![Workflow Templates](docs/screenshots/templates.png)
+
+### Quick Start
 
 1. Go to [arc.gudman.xyz](https://arc.gudman.xyz)
-2. Connect a wallet on Arc Testnet (Chain ID 5042002, RPC `https://rpc.testnet.arc.network`)
-3. Get test USDC from the [Circle faucet](https://faucet.circle.com/) (select "Arc Testnet")
-4. Browse services, register an agent, or create a pipeline
+2. Connect wallet on Arc Testnet (Chain ID `5042002`, RPC `https://rpc.testnet.arc.network`)
+3. Get testnet USDC from the [Circle faucet](https://faucet.circle.com/) (select "Arc Testnet")
+4. Browse services, register an agent, or launch a workflow template
 
-Or use the SDK:
+## Contracts
+
+7 contracts deployed on Arc Testnet. All UUPS upgradeable with Ownable2Step.
+
+| Contract | Address | Purpose |
+|----------|---------|---------|
+| PipelineOrchestrator | [`0xb43E...9720`](https://testnet.arcscan.app/address/0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720) | Multi-stage workflow orchestration |
+| CommerceHook | [`0xaecF...3D8f`](https://testnet.arcscan.app/address/0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f) | Evaluator: approve/reject + reputation |
+| AgentPolicy | [`0xB172...6c0E`](https://testnet.arcscan.app/address/0xB172b27Af9E084D574817b080C04a7629c606c0E) | Spending guardrails |
+| StreamEscrow | [`0x1501...1Fb6`](https://testnet.arcscan.app/address/0x1501566F49290d5701546D7De837Cb516c121Fb6) | Heartbeat-gated streaming payments |
+| ServiceMarket | [`0x046e...2f88`](https://testnet.arcscan.app/address/0x046e44E2DE09D2892eCeC4200bB3ecD298892f88) | Two-sided capability marketplace |
+| ServiceEscrow | [`0x3658...4Cf`](https://testnet.arcscan.app/address/0x365889e057a3ddABADB542e19f8199650B4df4Cf) | Escrow + dispute resolution |
+| SpendingPolicy | [`0x072b...2634`](https://testnet.arcscan.app/address/0x072bFf95A62Ef1109dBE0122f734D6bC649E2634) | Per-tx/daily caps |
+
+### On-Chain Activity
+
+Pipeline #0 completed end-to-end on testnet: 2-stage (audit -> deploy), 2 USDC, both stages approved, reputation recorded on ERC-8004. [View on ArcScan](https://testnet.arcscan.app/address/0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720).
+
+## Architecture
+
+**PipelineOrchestrator** -- Client defines ordered stages, each assigned to a different agent. Total budget locked atomically. Creates ERC-8183 jobs per stage, manages transitions, handles refunds on failure.
+
+**CommerceHook** -- Set as the **evaluator** on every job (hook is `address(0)` since ACP whitelists hooks). Has on-chain authority to call `complete()` or `reject()`. Records reputation on ERC-8004 and advances the pipeline.
+
+**AgentPolicy** -- Human-configurable spending guardrails. Per-transaction limits, daily caps, counterparty allowlists. Enforced on pipeline creation.
+
+**StreamEscrow** -- Heartbeat-gated linear vesting. Provider sends periodic heartbeats; missed heartbeats pause the stream. Client can top up or cancel with pro-rata refund.
+
+## Why Arc
+
+This protocol is impossible without Arc's native infrastructure:
+
+- **ERC-8183** -- Each pipeline stage is a native Arc job with built-in escrow. We compose, not reimplement.
+- **ERC-8004** -- Every stage completion records reputation. Agent identities are verified on-chain.
+- **USDC-native** -- No bridging, no token swaps. Agents pay and earn in stablecoins.
+- **EURC support** -- Multi-currency pipelines using Arc's native EURC.
+
+## SDKs
+
+### Python
 
 ```bash
 pip install -e sdk/
-python -c "
-from arc_commerce import ArcCommerce
-client = ArcCommerce()
-for svc in client.list_all_services():
-    print(f'Service #{svc.service_id}: Agent #{svc.agent_id} - {svc.price_usdc} USDC')
-"
 ```
-
-## Build from Source
-
-```bash
-# Build contracts
-forge build
-
-# Test (134 Solidity tests across 6 suites)
-forge test
-
-# Deploy v3 via UUPS proxy
-forge script script/DeployV3.s.sol --rpc-url https://rpc.testnet.arc.network --private-key $PK --broadcast
-```
-
-## Python SDK
-
-```bash
-pip install -e sdk/
-```
-
-### Create a pipeline
 
 ```python
 from arc_commerce import ArcCommerce
@@ -129,14 +113,27 @@ pipeline_id = agent.create_pipeline(
 
 # Check status
 pipeline = agent.get_pipeline(pipeline_id)
-stages = agent.get_stages(pipeline_id)
 print(f"Pipeline #{pipeline_id}: {pipeline.status.name}, {pipeline.total_budget_usdc} USDC")
 
 # Approve a completed stage
 agent.approve_stage(stages[0].job_id)
 ```
 
-### LangChain integration
+### TypeScript
+
+```bash
+cd sdk-ts && npm install
+```
+
+```typescript
+import { ArcCommerceClient } from "@arc-commerce/sdk";
+
+const client = new ArcCommerceClient({ rpcUrl: "https://rpc.testnet.arc.network" });
+const services = await client.getServices();
+const pipeline = await client.getPipeline(0);
+```
+
+### LangChain
 
 ```python
 from arc_commerce.langchain import ArcPipelineTool, ArcApproveStage, ArcPipelineStatus
@@ -148,101 +145,87 @@ tools = [
 ]
 ```
 
-### Streaming payments
+## Frontend
 
-```python
-# Create a 1-hour stream: 10 USDC, 60s heartbeat interval
-stream_id = agent.create_stream(
-    client_agent_id=933,
-    provider_agent_id=934,
-    provider_address="0x...",
-    amount_usdc=10,
-    duration_seconds=3600,
-    heartbeat_interval=60,
-)
+![Dashboard](docs/screenshots/marketplace.png)
 
-# Provider sends heartbeats to keep stream active
-agent.heartbeat(stream_id)
+Next.js + wagmi + viem. 23 components across 7 tabs:
 
-# Provider withdraws accrued balance
-agent.withdraw_stream(stream_id)
+- **Workflow Templates** -- Pre-built multi-agent workflows (audit -> deploy, research -> report, etc.)
+- **Marketplace** -- Browse services with capability filtering and reputation badges
+- **Activity Feed** -- Unified timeline of ACP jobs, pipelines, and agreements
+- **Pipeline Builder** -- Multi-stage workflow creation with USDC approval flow
+- **Streams** -- Create and manage streaming payments with heartbeat monitoring
+- **Agent Directory** -- All registered ERC-8004 agents with profiles
+- **ACP Jobs Explorer** -- Browse all ERC-8183 jobs on the Arc ecosystem
 
-# Client can top up or cancel
-agent.top_up_stream(stream_id, amount_usdc=5)
-agent.cancel_stream(stream_id)  # pro-rata refund
-```
+### Public API
 
-The SDK also includes the v2 methods (find_services, create_agreement, hire) for backward compatibility.
+7 REST endpoints at `https://arc.gudman.xyz/api/`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/stats` | Protocol overview (services, agents, jobs, pipelines, streams) |
+| `GET /api/agents` | Paginated agent list with owners |
+| `GET /api/agents/:id` | Agent detail with services and job stats |
+| `GET /api/services` | All marketplace services with filtering |
+| `GET /api/jobs` | Paginated ACP jobs |
+| `GET /api/pipelines` | All pipelines with stage counts and budgets |
+| `GET /api/docs` | API documentation |
 
 ## Autonomous Agent Demo
 
 Three AI agents autonomously execute a multi-stage pipeline on Arc Testnet:
 
 1. **BUILDER** (Agent #933) creates an "audit -> deploy" pipeline
-2. **AUDITOR** (Agent #934) picks up stage 1, submits deliverable
-3. **DEPLOYER** (Agent #935) picks up stage 2, submits deliverable
-4. **BUILDER** approves each stage, pipeline completes
+2. **AUDITOR** picks up stage 1, submits deliverable
+3. **DEPLOYER** picks up stage 2, submits deliverable
+4. **BUILDER** approves each stage, pipeline completes, reputation recorded
 
 ```bash
 cd sdk/examples
 ARC_BUILDER_PK=0x... ARC_AUDITOR_PK=0x... ARC_DEPLOYER_PK=0x... python pipeline_demo.py
 ```
 
-## Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Next.js + wagmi + viem. Features:
-- Browse Services -- marketplace with capability filtering and reputation badges
-- Agent Directory -- all registered ERC-8004 agents with profiles
-- Pipeline Builder -- multi-stage workflow creation with USDC approval
-- Pipeline Tracker -- real-time stage progression with approve/reject
-- Streams -- create and manage streaming payments with heartbeat monitoring
-- Spending Policy -- configure agent spending limits
-- ACP Jobs Explorer -- browse all ERC-8183 jobs on the Arc ecosystem
-- Activity Feed -- unified timeline of all protocol activity
-
 ## Tests
 
-134 Solidity tests across 6 suites, plus 49 Python SDK unit tests:
+134 Solidity tests across 6 suites + 59 Python SDK tests. CI green.
 
 | Suite | Tests | Coverage |
 |-------|-------|----------|
-| CommerceHookTest | 16 | Hook registration, approval, rejection, auto-approve, access control |
+| CommerceHookTest | 16 | Hook registration, approval, rejection, access control |
 | AgentPolicyTest | 13 | Policy CRUD, budget checks, daily reset, counterparty restrictions |
 | PipelineOrchestratorTest | 16 | Creation, advancement, completion, cancellation, halt, policy |
 | StreamEscrowTest | 12 | Creation, heartbeat, pause/resume, withdraw, cancel, topUp |
-| IntegrationTest | 7 | Full lifecycle, halt on reject, auto-approve, policy enforcement |
+| IntegrationTest | 7 | Full lifecycle, halt on reject, policy enforcement |
 | Legacy (v2) | 46 | ServiceMarket, ServiceEscrow, SpendingPolicy |
+| Python SDK | 59 | Client, types, errors, identity, policy, retry, live reads |
 
 ```bash
-forge test -v
+forge test -vvv          # Solidity
+cd sdk && pytest tests/  # Python
 ```
 
-## SDK Examples
+## Build from Source
 
-| Script | Description |
-|--------|-------------|
-| `sdk/examples/pipeline_demo.py` | 3-agent autonomous pipeline demo |
-| `sdk/examples/langchain_tool.py` | LangChain adapter example |
-| `sdk/examples/browse_services.py` | List services by capability (v2) |
-| `sdk/examples/hire_agent.py` | Hire an agent with USDC escrow (v2) |
-| `sdk/examples/demo.py` | Full autonomous agent-to-agent demo (v2) |
-| `scripts/populate_marketplace.py` | Seed marketplace with agents, services, and pipelines |
-| `scripts/demo_streaming.py` | StreamEscrow demo: heartbeat, pause, resume, cancel |
-| `scripts/check_state.py` | Inspect on-chain marketplace state |
+```bash
+# Contracts
+forge build
+forge test
+
+# Frontend
+cd frontend && npm install && npm run dev
+
+# Python SDK
+pip install -e sdk/
+```
 
 ## Key Design Decisions
 
 - **ERC-8183 composition, not reimplementation**: Each pipeline stage is a native Arc job. We don't rebuild escrow.
-- **CommerceHook as evaluator, not hook**: ACP whitelists hooks, so we pass `address(0)` as hook and set CommerceHook as evaluator instead. The evaluator has the same on-chain authority to `complete()`/`reject()` jobs without needing whitelist approval. Auto-approve via `afterAction` callbacks would require hook whitelisting.
+- **CommerceHook as evaluator, not hook**: ACP whitelists hooks, so we pass `address(0)` as hook and set CommerceHook as evaluator. Same on-chain authority without needing whitelist approval.
 - **Single currency per pipeline**: Honest about StableFX being permissioned. USDC or EURC, not both in one pipeline.
-- **All stages required**: No optional or skippable stages. Keeps the model simple and predictable.
-- **Validation checked, not gated**: ValidationRegistry is queried but doesn't block pipeline creation. Avoids chicken-and-egg.
+- **All stages required**: No optional or skippable stages. Simple and predictable.
 - **UUPS upgradeable**: All contracts behind ERC-1967 proxies with Ownable2Step.
 - **Human guardrails**: AgentPolicy enforced on pipeline creation. Agents can't overspend.
 

@@ -5,8 +5,8 @@ out/
 # Forge broadcast logs
 broadcast/
 
-# Docs (auto-generated)
-docs/
+# Forge docs (auto-generated)
+docs/plans/
 
 # Environment and secrets
 .env
