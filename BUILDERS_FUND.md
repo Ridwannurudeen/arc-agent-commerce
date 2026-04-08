@@ -16,7 +16,7 @@ Three composable contracts that form a pipeline orchestration layer on top of Ar
 
 1. **PipelineOrchestrator** -- Client defines ordered stages (audit -> deploy -> monitor), funds the total budget in one transaction (USDC or EURC), and the orchestrator creates ERC-8183 jobs per stage. Stages chain automatically -- completion of one activates the next. Failure halts the pipeline and refunds unstarted stages.
 
-2. **CommerceHook** -- Acts as the **evaluator** on every ERC-8183 job in the pipeline (hook is `address(0)` since ACP whitelists hooks). The evaluator has on-chain authority to call `complete()` or `reject()`. When a provider submits work, the pipeline client approves or rejects through the hook. On completion, it records reputation on ERC-8004 ReputationRegistry and tells the orchestrator to advance. On rejection, it halts the pipeline and records negative reputation.
+2. **CommerceHook** -- Acts as the **evaluator** on every ERC-8183 job in the pipeline. The evaluator has on-chain authority to call `complete()` or `reject()`. Today, the pipeline client manually approves or rejects through `approveStage()`/`rejectStage()` (manual evaluator-driven orchestration). The contract already implements `afterAction` callbacks for autonomous approval -- once the Arc team whitelists CommerceHook as a hook, auto-approve on submit becomes available with zero code changes. On completion, records reputation on ERC-8004 ReputationRegistry and advances the pipeline. On rejection, halts the pipeline and records negative reputation.
 
 3. **AgentPolicy** -- Human-configurable spending guardrails. Per-transaction limits, daily caps, counterparty restrictions. Enforced on pipeline creation so agents can't overspend.
 
@@ -35,7 +35,7 @@ If you deploy this on Ethereum or Solana, it has no ERC-8183 to compose. It beco
 
 - 4 protocol contracts (PipelineOrchestrator, CommerceHook, AgentPolicy, StreamEscrow) -- all UUPS upgradeable
 - 2 marketplace contracts (ServiceMarket, ServiceEscrow) with dispute resolution
-- 134 Solidity tests across 6 test suites + 49 Python SDK unit tests
+- 134 Solidity tests across 6 test suites + 59 Python SDK tests (193 total)
 - Python SDK with pipeline, streaming, service, and agreement operations
 - TypeScript SDK (`@arc-commerce/sdk`) with full pipeline and service client
 - LangChain adapter for agent framework integration (4 tools)
@@ -75,7 +75,7 @@ Protocol integrates with ERC-8183 which handles escrow natively. Value accrues f
 
 ## Roadmap
 
-**Now**: Core v3 contracts, SDKs (Python + TypeScript), frontend, demo, 183 tests -- all complete on testnet. Pipeline #0 completed end-to-end on-chain with reputation recorded.
+**Now**: Core v3 contracts, SDKs (Python + TypeScript), frontend, demo, 193 tests (134 Solidity + 59 Python) -- all complete on testnet. Pipeline #0 completed end-to-end on-chain with reputation recorded. Current approval model is manual evaluator-driven orchestration; autonomous hook-based approval follows after Arc hook whitelisting.
 
 **Next**: Mainnet deployment. Hook whitelisting with Arc team (enables auto-approve via `afterAction` callbacks). SDK publishing to PyPI and npm. Indexed API for historical queries.
 
