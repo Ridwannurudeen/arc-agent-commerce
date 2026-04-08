@@ -68,7 +68,7 @@ export default function Home() {
 
   return (
     <ErrorBoundary>
-      <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} onHome={() => setShowDashboard(false)} />
       <NetworkBanner />
       <div className="app-layout">
         <Sidebar

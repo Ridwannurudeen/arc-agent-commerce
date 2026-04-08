@@ -6,9 +6,9 @@ import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { arcTestnet } from "@/config";
 import { useTheme } from "@/context/ThemeContext";
 import { MobileSidebarToggle } from "@/components/Sidebar";
-import { Droplets } from "lucide-react";
+import { Droplets, Home } from "lucide-react";
 
-export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
+export function Header({ onMenuToggle, onHome }: { onMenuToggle?: () => void; onHome?: () => void }) {
   const { address, isConnected, chain } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
@@ -22,7 +22,17 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
     <header className="header-glass">
       <div className="header-left">
         {onMenuToggle && <MobileSidebarToggle onClick={onMenuToggle} />}
-        <h1 className="header-title">
+        {onHome && (
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={onHome}
+            title="Back to homepage"
+            style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginRight: "0.5rem" }}
+          >
+            <Home size={14} /> Home
+          </button>
+        )}
+        <h1 className="header-title" onClick={onHome} style={onHome ? { cursor: "pointer" } : undefined}>
           <span className="header-title-primary">Agent Commerce</span>{" "}
           <span className="header-title-accent">Protocol</span>
         </h1>
