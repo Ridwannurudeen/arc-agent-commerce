@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import { CONTRACTS, arcTestnet } from "@/config";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
@@ -35,10 +35,44 @@ const FILTER_TAGS: { label: string; match: (cap: string) => boolean }[] = [
   { label: "Consulting", match: (c) => c.includes("consult") },
 ];
 
+type ApiService = {
+  serviceId: number;
+  agentId: number;
+  provider: string;
+  capabilityHash: string;
+  priceUsdc: number;
+  priceRaw: string;
+  metadataUri: string;
+  active: boolean;
+};
+
+type ApiStats = {
+  totalServices: number;
+  activeServices: number;
+  totalJobs: number;
+  completedJobs: number;
+};
+
 export function Marketplace({ onViewAgent, onHire }: Props) {
   const [selectedCapability, setSelectedCapability] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState(0);
+
+  // API fallback data
+  const [apiServices, setApiServices] = useState<ApiService[] | null>(null);
+  const [apiStats, setApiStats] = useState<ApiStats | null>(null);
+  const [apiFetched, setApiFetched] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/services").then((r) => r.json()).catch(() => null),
+      fetch("/api/stats").then((r) => r.json()).catch(() => null),
+    ]).then(([svcData, statsData]) => {
+      if (svcData?.services) setApiServices(svcData.services);
+      if (statsData?.totalServices != null) setApiStats(statsData);
+      setApiFetched(true);
+    });
+  }, []);
 
   const { data: nextId, isError: serviceError } = useReadContract({
     address: CONTRACTS.SERVICE_MARKET,
@@ -106,24 +140,42 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
   }, [providerStats]);
 
   const services = useMemo(() => {
-    if (!servicesRaw) return [];
-    return servicesRaw
-      .map((r, i) => {
-        if (r.status !== "success" || !r.result) return null;
-        const d = r.result as any[];
-        if (!d || !d[1]) return null;
-        return {
-          serviceId: i,
-          agentId: Number(d[0] ?? 0),
-          provider: ((d[1] ?? "") as string) || "",
-          capabilityHash: ((d[2] ?? "") as string) || "",
-          pricePerTask: BigInt(d[3] ?? 0),
-          metadataURI: ((d[4] ?? "") as string) || "",
-          active: !!d[5],
-        };
-      })
-      .filter((s): s is NonNullable<typeof s> => s !== null && s.active);
-  }, [servicesRaw]);
+    // Try on-chain data first
+    if (servicesRaw && servicesRaw.length > 0) {
+      const onChain = servicesRaw
+        .map((r, i) => {
+          if (r.status !== "success" || !r.result) return null;
+          const d = r.result as any[];
+          if (!d || !d[1]) return null;
+          return {
+            serviceId: i,
+            agentId: Number(d[0] ?? 0),
+            provider: ((d[1] ?? "") as string) || "",
+            capabilityHash: ((d[2] ?? "") as string) || "",
+            pricePerTask: BigInt(d[3] ?? 0),
+            metadataURI: ((d[4] ?? "") as string) || "",
+            active: !!d[5],
+          };
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null && s.active);
+      if (onChain.length > 0) return onChain;
+    }
+    // Fallback to API data
+    if (apiServices) {
+      return apiServices
+        .filter((s) => s.active)
+        .map((s) => ({
+          serviceId: s.serviceId,
+          agentId: s.agentId,
+          provider: s.provider,
+          capabilityHash: s.capabilityHash,
+          pricePerTask: BigInt(s.priceRaw || Math.round(s.priceUsdc * 1_000_000)),
+          metadataURI: s.metadataUri || "",
+          active: true,
+        }));
+    }
+    return [];
+  }, [servicesRaw, apiServices]);
 
   // Unique agent count
   const uniqueAgents = useMemo(() => {
@@ -193,15 +245,15 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
       <div className="bento-grid">
         <div className="bento-card">
           <div className="label">Services Listed</div>
-          <div className="value">{services.length}</div>
+          <div className="value">{services.length || apiStats?.activeServices || 0}</div>
         </div>
         <div className="bento-card">
           <div className="label">Agents Active</div>
-          <div className="value">{uniqueAgents}</div>
+          <div className="value">{uniqueAgents || (apiServices ? new Set(apiServices.map((s) => s.agentId)).size : 0)}</div>
         </div>
         <div className="bento-card">
           <div className="label">Jobs Completed</div>
-          <div className="value">{completedJobs}</div>
+          <div className="value">{completedJobs || apiStats?.completedJobs || 0}</div>
         </div>
         <div className="bento-card">
           <div className="label">Network</div>
@@ -240,7 +292,7 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
       </div>
 
       {/* ── Loading State ── */}
-      {isLoading && <SkeletonGrid count={6} />}
+      {isLoading && !apiFetched && <SkeletonGrid count={6} />}
 
       {/* ── Error State ── */}
       {isError && !isLoading && (
