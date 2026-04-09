@@ -145,16 +145,19 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
       const onChain = servicesRaw
         .map((r, i) => {
           if (r.status !== "success" || !r.result) return null;
-          const d = r.result as any[];
-          if (!d || !d[1]) return null;
+          // ServiceMarket.Service has named struct fields so viem decodes
+          // it as an object, not an indexed array.
+          const d = r.result as any;
+          const provider = ((d.provider ?? d[1] ?? "") as string) || "";
+          if (!provider) return null;
           return {
             serviceId: i,
-            agentId: Number(d[0] ?? 0),
-            provider: ((d[1] ?? "") as string) || "",
-            capabilityHash: ((d[2] ?? "") as string) || "",
-            pricePerTask: BigInt(d[3] ?? 0),
-            metadataURI: ((d[4] ?? "") as string) || "",
-            active: !!d[5],
+            agentId: Number(d.agentId ?? d[0] ?? 0),
+            provider,
+            capabilityHash: ((d.capabilityHash ?? d[2] ?? "") as string) || "",
+            pricePerTask: BigInt(d.pricePerTask ?? d[3] ?? 0),
+            metadataURI: ((d.metadataURI ?? d[4] ?? "") as string) || "",
+            active: !!(d.active ?? d[5]),
           };
         })
         .filter((s): s is NonNullable<typeof s> => s !== null && s.active);
