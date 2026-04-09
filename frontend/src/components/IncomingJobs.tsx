@@ -55,12 +55,33 @@ export function IncomingJobs() {
     query: { enabled: pipelineCount > 0 },
   });
 
+  // Also fetch each pipeline's status so we can hide stages that belong to
+  // cancelled or halted pipelines — those leave orphan ACP jobs in the
+  // provider's inbox that have no real next action.
+  const { data: pipelineStatuses } = useReadContracts({
+    contracts: Array.from({ length: pipelineCount }, (_, i) => ({
+      address: CONTRACTS.PIPELINE_ORCHESTRATOR as `0x${string}`,
+      abi: PipelineOrchestratorABI as any,
+      functionName: "pipelines",
+      args: [BigInt(i)],
+      chainId: arcTestnet.id,
+    })),
+    query: { enabled: pipelineCount > 0 },
+  });
+
   const myStages = useMemo(() => {
     if (!stagesRaw || !address) return [];
     const result: { pipelineId: number; stageIndex: number; stage: any }[] = [];
     for (let p = 0; p < stagesRaw.length; p++) {
       const r = stagesRaw[p];
       if (r.status !== "success" || !r.result) continue;
+      // Skip stages from cancelled (3) or halted (2) pipelines.
+      const pStat = pipelineStatuses?.[p];
+      if (pStat?.status === "success" && pStat.result) {
+        const pAny = pStat.result as any;
+        const pStatusVal = Number(pAny.status ?? pAny[7] ?? 0);
+        if (pStatusVal === 2 || pStatusVal === 3) continue;
+      }
       const stages = r.result as any[];
       for (let s = 0; s < stages.length; s++) {
         const stage = stages[s];
@@ -71,7 +92,7 @@ export function IncomingJobs() {
       }
     }
     return result;
-  }, [stagesRaw, address]);
+  }, [stagesRaw, pipelineStatuses, address]);
 
   const jobIds = myStages.map((s) => {
     const jobId = s.stage.jobId ?? s.stage[4] ?? 0;
