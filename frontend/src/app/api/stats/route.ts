@@ -1,4 +1,4 @@
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead } from "@/lib/viemClient";
+import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead, findMaxAgentId } from "@/lib/viemClient";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
@@ -6,34 +6,21 @@ import StreamEscrowABI from "@/abi/StreamEscrow.json";
 
 export const dynamic = "force-dynamic";
 
-const totalSupplyAbi = [
-  {
-    type: "function",
-    name: "totalSupply",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
-
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
 export async function GET() {
   try {
-    // Fetch all counters in parallel
-    const [nextServiceId, totalSupply, jobCounter, nextPipelineId, streamCount] = await Promise.all([
+    // Fetch all counters in parallel. IdentityRegistry has no working
+    // totalSupply(); use a binary-search probe of ownerOf instead.
+    const [nextServiceId, totalAgents, jobCounter, nextPipelineId, streamCount] = await Promise.all([
       client.readContract({
         address: CONTRACTS.SERVICE_MARKET,
         abi: ServiceMarketABI,
         functionName: "nextServiceId",
       }).catch(() => BigInt(0)),
-      client.readContract({
-        address: CONTRACTS.IDENTITY_REGISTRY,
-        abi: totalSupplyAbi,
-        functionName: "totalSupply",
-      }).catch(() => BigInt(0)),
+      findMaxAgentId().catch(() => 0),
       client.readContract({
         address: CONTRACTS.AGENTIC_COMMERCE,
         abi: AgenticCommerceABI as any,
@@ -97,7 +84,7 @@ export async function GET() {
     return jsonResponse({
       totalServices,
       activeServices,
-      totalAgents: Number(totalSupply as bigint),
+      totalAgents,
       totalJobs,
       completedJobs,
       totalPipelines: Number(nextPipelineId as bigint),

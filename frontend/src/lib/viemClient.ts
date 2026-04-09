@@ -81,3 +81,67 @@ export async function batchRead(calls: { address: `0x${string}`; abi: any; funct
       : { status: "failure" as const, result: undefined }
   );
 }
+
+// Cache the max-ID result briefly so repeated callers don't hammer the RPC.
+let _maxAgentIdCache: { value: number; expires: number } | null = null;
+const MAX_AGENT_ID_TTL_MS = 30_000;
+
+/**
+ * Binary-search for the highest minted IdentityRegistry tokenId.
+ * Works around Arc IdentityRegistry not exposing totalSupply() — the
+ * deployed contract reverts on that call, which silently broke the
+ * Agent Directory and stats totalAgents. Sequential mint assumption
+ * holds for the current deployment.
+ */
+export async function findMaxAgentId(): Promise<number> {
+  if (_maxAgentIdCache && _maxAgentIdCache.expires > Date.now()) {
+    return _maxAgentIdCache.value;
+  }
+
+  const ownerOfAbi = [
+    {
+      type: "function",
+      name: "ownerOf",
+      inputs: [{ name: "tokenId", type: "uint256" }],
+      outputs: [{ name: "", type: "address" }],
+      stateMutability: "view",
+    },
+  ] as const;
+
+  const exists = async (id: number): Promise<boolean> => {
+    try {
+      await client.readContract({
+        address: CONTRACTS.IDENTITY_REGISTRY,
+        abi: ownerOfAbi,
+        functionName: "ownerOf",
+        args: [BigInt(id)],
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Exponential expansion to find a non-existent upper bound.
+  let hi = 1;
+  const SANITY_CAP = 10_000_000;
+  while (hi < SANITY_CAP) {
+    if (!(await exists(hi))) break;
+    hi *= 2;
+  }
+  if (hi === 1 && !(await exists(1))) {
+    _maxAgentIdCache = { value: 0, expires: Date.now() + MAX_AGENT_ID_TTL_MS };
+    return 0;
+  }
+
+  // Binary search between lo (known to exist) and hi (known to revert).
+  let lo = Math.max(1, Math.floor(hi / 2));
+  while (lo < hi - 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (await exists(mid)) lo = mid;
+    else hi = mid;
+  }
+
+  _maxAgentIdCache = { value: lo, expires: Date.now() + MAX_AGENT_ID_TTL_MS };
+  return lo;
+}

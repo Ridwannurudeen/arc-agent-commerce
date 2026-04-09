@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useReadContract, useReadContracts } from "wagmi";
+import { useState, useMemo, useEffect } from "react";
+import { useReadContracts } from "wagmi";
 import { CONTRACTS, arcTestnet } from "@/config";
 import IdentityRegistryABI from "@/abi/IdentityRegistry.json";
 import { Skeleton } from "@/components/Skeleton";
@@ -25,14 +25,23 @@ export function AgentDirectory({ onViewAgent }: { onViewAgent: (agentId: number)
   const [page, setPage] = useState(0);
   const [searchId, setSearchId] = useState("");
 
-  const { data: totalSupplyRaw } = useReadContract({
-    address: CONTRACTS.IDENTITY_REGISTRY,
-    abi: IdentityRegistryABI,
-    functionName: "totalSupply",
-    chainId: arcTestnet.id,
-  });
-
-  const totalAgents = Number(totalSupplyRaw ?? 0);
+  // IdentityRegistry has no working totalSupply() on Arc — the count
+  // endpoint binary-searches ownerOf to find the highest minted ID.
+  const [totalAgents, setTotalAgents] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/agents/count")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && typeof data?.totalAgents === "number") {
+          setTotalAgents(data.totalAgents);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const totalPages = Math.max(1, Math.ceil(totalAgents / PAGE_SIZE));
   const startId = totalAgents - page * PAGE_SIZE;
   const endId = Math.max(1, startId - PAGE_SIZE + 1);
