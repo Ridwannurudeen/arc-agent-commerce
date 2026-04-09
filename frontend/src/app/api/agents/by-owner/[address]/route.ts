@@ -12,11 +12,14 @@ const TRANSFER_EVENT = parseAbiItem(
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 );
 
-const CHUNK_SIZE = BigInt(500_000);
+// Arc RPC caps eth_getLogs at a 10,000-block range, so we scan in 10k chunks.
+// We fan out PARALLEL chunks per batch and bail out early as soon as the
+// verified agent count matches the wallet's balance.
+const CHUNK_SIZE = BigInt(10_000);
 const ZERO = BigInt(0);
 const ONE = BigInt(1);
-const TWO = BigInt(2);
-const MAX_CHUNKS = 80; // safety bound — covers ~40M blocks
+const PARALLEL = 5;
+const MAX_BATCHES = 8; // 8 * 5 * 10k = 400,000 blocks ~ last few days on Arc
 
 export async function GET(
   _request: Request,
@@ -32,7 +35,6 @@ export async function GET(
 
     const ownerTyped = owner as `0x${string}`;
 
-    // How many NFTs should we expect?
     const balance = (await client.readContract({
       address: CONTRACTS.IDENTITY_REGISTRY,
       abi: IdentityRegistryABI,
@@ -46,60 +48,78 @@ export async function GET(
 
     const latest = await client.getBlockNumber();
 
-    // Scan Transfer(*, owner) in reverse chunks until we've collected
-    // enough candidates. Stop early if we clearly have >= balance * 2
-    // (2x gives headroom for transfers-in that were later sent out).
-    const candidates = new Set<bigint>();
-    let toBlock = latest;
+    // Precompute chunk ranges, newest first.
+    const ranges: Array<[bigint, bigint]> = [];
+    let cursor = latest;
+    for (let i = 0; i < MAX_BATCHES * PARALLEL; i++) {
+      const toBlock = cursor;
+      const fromBlock = toBlock > CHUNK_SIZE ? toBlock - CHUNK_SIZE + ONE : ZERO;
+      ranges.push([fromBlock, toBlock]);
+      if (fromBlock === ZERO) break;
+      cursor = fromBlock - ONE;
+    }
 
-    for (let i = 0; i < MAX_CHUNKS; i++) {
-      const fromBlock = toBlock > CHUNK_SIZE ? toBlock - CHUNK_SIZE : ZERO;
-      try {
-        const logs = await client.getLogs({
-          address: CONTRACTS.IDENTITY_REGISTRY,
-          event: TRANSFER_EVENT,
-          args: { to: ownerTyped },
-          fromBlock,
-          toBlock,
-        });
-        for (const log of logs) {
-          if (log.args.tokenId !== undefined) {
-            candidates.add(log.args.tokenId);
+    const candidates = new Set<bigint>();
+    const verified: number[] = [];
+    const seenVerified = new Set<number>();
+
+    for (let i = 0; i < ranges.length; i += PARALLEL) {
+      const batch = ranges.slice(i, i + PARALLEL);
+
+      const logResults = await Promise.allSettled(
+        batch.map(([fromBlock, toBlock]) =>
+          client.getLogs({
+            address: CONTRACTS.IDENTITY_REGISTRY,
+            event: TRANSFER_EVENT,
+            args: { to: ownerTyped },
+            fromBlock,
+            toBlock,
+          })
+        )
+      );
+
+      const newCandidates: bigint[] = [];
+      for (const r of logResults) {
+        if (r.status === "fulfilled") {
+          for (const log of r.value) {
+            const tokenId = log.args.tokenId;
+            if (tokenId !== undefined && !candidates.has(tokenId)) {
+              candidates.add(tokenId);
+              newCandidates.push(tokenId);
+            }
           }
+        } else {
+          console.error("by-owner getLogs batch failed:", r.reason?.shortMessage ?? r.reason);
         }
-      } catch (err) {
-        console.error(`getLogs chunk ${fromBlock}-${toBlock} failed:`, err);
       }
 
-      if (BigInt(candidates.size) >= balance * TWO) break;
-      if (fromBlock === ZERO) break;
-      toBlock = fromBlock - ONE;
+      // Verify any new candidates via ownerOf — the candidate may have been
+      // transferred out since the Transfer-in event we just matched.
+      if (newCandidates.length > 0) {
+        const ownerCalls = newCandidates.map((id) => ({
+          address: CONTRACTS.IDENTITY_REGISTRY,
+          abi: IdentityRegistryABI as any,
+          functionName: "ownerOf" as const,
+          args: [id],
+        }));
+        const ownerResults = await batchRead(ownerCalls);
+        newCandidates.forEach((id, idx) => {
+          if (ownerResults[idx]?.status !== "success") return;
+          const holder = (ownerResults[idx].result as string).toLowerCase();
+          if (holder === owner) {
+            const idNum = Number(id);
+            if (!seenVerified.has(idNum)) {
+              seenVerified.add(idNum);
+              verified.push(idNum);
+            }
+          }
+        });
+      }
+
+      if (BigInt(verified.length) >= balance) break;
     }
 
-    if (candidates.size === 0) {
-      return jsonResponse({ owner: ownerTyped, agentIds: [] });
-    }
-
-    // Verify each candidate via ownerOf — filter to those still owned.
-    const candidateIds = [...candidates];
-    const ownerCalls = candidateIds.map((id) => ({
-      address: CONTRACTS.IDENTITY_REGISTRY,
-      abi: IdentityRegistryABI as any,
-      functionName: "ownerOf" as const,
-      args: [id],
-    }));
-
-    const results = await batchRead(ownerCalls);
-
-    const agentIds = candidateIds
-      .map((id, i) => {
-        if (results[i].status !== "success") return null;
-        const addr = (results[i].result as string).toLowerCase();
-        return addr === owner ? Number(id) : null;
-      })
-      .filter((x): x is number => x !== null)
-      .sort((a, b) => b - a);
-
+    const agentIds = verified.sort((a, b) => b - a);
     return jsonResponse({ owner: ownerTyped, agentIds });
   } catch (err) {
     console.error("GET /api/agents/by-owner error:", err);
