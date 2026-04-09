@@ -106,8 +106,9 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
 
   const totalBudgetParsed = totalBudget > 0 ? parseUnits(totalBudget.toString(), 6) : BigInt(0);
 
-  // Check allowance
-  const { data: allowance } = useReadContract({
+  // Check allowance — polls every 3s so the UI auto-advances to step 2
+  // as soon as the approve tx lands on-chain, even if useWaitForTransactionReceipt hangs.
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: currencyAddress,
     abi: USDCABI,
     functionName: "allowance",
@@ -115,7 +116,10 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
       ? [address, CONTRACTS.PIPELINE_ORCHESTRATOR]
       : undefined,
     chainId: arcTestnet.id,
-    query: { enabled: !!address && !!CONTRACTS.PIPELINE_ORCHESTRATOR },
+    query: {
+      enabled: !!address && !!CONTRACTS.PIPELINE_ORCHESTRATOR,
+      refetchInterval: 3000,
+    },
   });
 
   // Auto-advance to step 2 when approval succeeds
@@ -130,12 +134,13 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
     }
   }, [allowance, totalBudgetParsed]);
 
-  // Toast on approve success
+  // Toast on approve success + force refetch allowance so step 2 unlocks immediately
   useEffect(() => {
     if (isApproveSuccess && approveHash) {
       addToast(`${currencyLabel} approval confirmed`, "success", approveHash);
+      refetchAllowance();
     }
-  }, [isApproveSuccess, approveHash, addToast, currencyLabel]);
+  }, [isApproveSuccess, approveHash, addToast, currencyLabel, refetchAllowance]);
 
   // Toast on create success
   useEffect(() => {
