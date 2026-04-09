@@ -98,6 +98,7 @@ export default function Home() {
               onClearPrefill={() => setPipelinePrefill(null)}
               templatePrefill={templatePrefill}
               onClearTemplatePrefill={() => setTemplatePrefill(null)}
+              onNavigate={setTab}
             />
           )}
           {tab === "my-pipelines" && <MyPipelines />}

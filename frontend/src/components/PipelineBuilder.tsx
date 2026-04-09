@@ -9,8 +9,10 @@ import USDCABI from "@/abi/USDC.json";
 import { CAPABILITY_NAMES } from "@/lib/constants";
 import { useToast } from "@/context/ToastContext";
 import { parseContractError } from "@/lib/errors";
+import { useOwnedAgents } from "@/hooks/useOwnedAgents";
+import type { Tab } from "@/lib/types";
 import { motion } from "framer-motion";
-import { Layers, Plus, Trash2, ArrowRight, CheckCircle2, Wallet, CircleDollarSign, Clock } from "lucide-react";
+import { Layers, Plus, Trash2, ArrowRight, CheckCircle2, Wallet, CircleDollarSign, Clock, UserPlus } from "lucide-react";
 
 type StageInput = {
   providerAddress: string;
@@ -38,11 +40,13 @@ type Props = {
   onClearPrefill?: () => void;
   templatePrefill?: TemplateStagePrefill[] | null;
   onClearTemplatePrefill?: () => void;
+  onNavigate?: (tab: Tab) => void;
 };
 
-export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onClearTemplatePrefill }: Props = {}) {
+export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onClearTemplatePrefill, onNavigate }: Props = {}) {
   const { addToast } = useToast();
   const { address } = useAccount();
+  const { agentIds: ownedAgents, isLoading: loadingAgents } = useOwnedAgents(address);
 
   const [stages, setStages] = useState<StageInput[]>([emptyStage()]);
 
@@ -80,8 +84,20 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
     }
   }, [templatePrefill]);
 
-  const [clientAgentId, setClientAgentId] = useState("0");
+  const [clientAgentId, setClientAgentId] = useState("");
   const [currency, setCurrency] = useState<"usdc" | "eurc">("usdc");
+
+  // Auto-select the first owned agent once the list loads (or when
+  // the connected wallet changes and we have no selection yet).
+  useEffect(() => {
+    if (ownedAgents.length === 0) {
+      if (clientAgentId !== "") setClientAgentId("");
+      return;
+    }
+    if (!clientAgentId || !ownedAgents.includes(Number(clientAgentId))) {
+      setClientAgentId(String(ownedAgents[0]));
+    }
+  }, [ownedAgents]);
   const [deadlineHours, setDeadlineHours] = useState("24");
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -178,9 +194,10 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
   }, [stages, deadlineHours]);
 
   const hasErrors = Object.keys(validation).length > 0;
+  const hasOwnedAgent = ownedAgents.length > 0 && !!clientAgentId && ownedAgents.includes(Number(clientAgentId));
   const formComplete = stages.every(
     (s) => s.providerAddress && s.providerAgentId && s.capability && s.budget
-  ) && !!deadlineHours && totalBudget > 0;
+  ) && !!deadlineHours && totalBudget > 0 && hasOwnedAgent;
   const canSubmit = formComplete && !hasErrors;
 
   const updateStage = (index: number, field: keyof StageInput, value: string) => {
@@ -266,6 +283,27 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
         </div>
       </div>
 
+      {/* No-agent empty state — blocks the form entirely */}
+      {!loadingAgents && ownedAgents.length === 0 && (
+        <div className="warning-banner" style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <UserPlus size={18} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: "200px" }}>
+            <strong>You don't own any agents yet.</strong>{" "}
+            Pipelines are created on behalf of an agent identity (ERC-8004). Register one first, then come back here.
+          </div>
+          {onNavigate && (
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}
+              onClick={() => onNavigate("register-agent")}
+            >
+              <UserPlus size={14} /> Register Agent
+            </button>
+          )}
+        </div>
+      )}
+
       <form onSubmit={handleCreate}>
         <div className="glass-card" style={{ marginBottom: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -275,14 +313,29 @@ export function PipelineBuilder({ prefill, onClearPrefill, templatePrefill, onCl
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
             <div className="form-group">
-              <label>Client Agent ID</label>
-              <input
-                className="glass-input"
-                type="number"
-                placeholder="0"
-                value={clientAgentId}
-                onChange={(e) => setClientAgentId(e.target.value)}
-              />
+              <label>
+                Client Agent ID
+                {ownedAgents.length > 0 && (
+                  <span style={{ marginLeft: "0.4rem", fontSize: "0.7rem", color: "var(--text-dim)", fontWeight: 400 }}>
+                    ({ownedAgents.length} owned)
+                  </span>
+                )}
+              </label>
+              {loadingAgents ? (
+                <input className="glass-input" disabled placeholder="Loading your agents..." />
+              ) : ownedAgents.length > 0 ? (
+                <select
+                  className="glass-select"
+                  value={clientAgentId}
+                  onChange={(e) => setClientAgentId(e.target.value)}
+                >
+                  {ownedAgents.map((id) => (
+                    <option key={id} value={id}>#{id}</option>
+                  ))}
+                </select>
+              ) : (
+                <input className="glass-input" disabled placeholder="No agents owned" />
+              )}
             </div>
 
             <div className="form-group">
