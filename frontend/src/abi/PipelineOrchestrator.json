@@ -147,6 +147,19 @@
   },
   {
     "type": "function",
+    "name": "fundStage",
+    "inputs": [
+      {
+        "name": "pipelineId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "getClientPipelines",
     "inputs": [
       {
