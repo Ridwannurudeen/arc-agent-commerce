@@ -12,7 +12,6 @@ export type Tab =
   | "agent-directory"
   | "streams"
   | "templates"
-  | "validators"
   | "admin";
 
 export type Prefill = {

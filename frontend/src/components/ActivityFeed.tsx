@@ -124,10 +124,19 @@ export function ActivityFeed({ onViewAgent }: Props) {
     if (pipBatch) {
       pipBatch.forEach((r, i) => {
         if (r.status !== "success" || !r.result) return;
-        const arr = r.result as unknown[];
+        // pipelines() returns 10 NAMED outputs — viem decodes as a named
+        // object, not a positional array. Read by name with indexed fallback.
+        const p = r.result as any;
         list.push({
-          type: "pipeline", id: i, timestamp: (arr[8] as bigint) ?? BigInt(0),
-          data: { clientAgentId: Number(arr[0] ?? 0), totalBudget: (arr[3] as bigint) ?? BigInt(0), stageCount: Number(arr[6] ?? 0), status: Number(arr[7] ?? 0) },
+          type: "pipeline",
+          id: i,
+          timestamp: BigInt(p.createdAt ?? p[8] ?? 0),
+          data: {
+            clientAgentId: Number(p.clientAgentId ?? p[0] ?? 0),
+            totalBudget: BigInt(p.totalBudget ?? p[3] ?? 0),
+            stageCount: Number(p.stageCount ?? p[6] ?? 0),
+            status: Number(p.status ?? p[7] ?? 0),
+          },
         });
       });
     }

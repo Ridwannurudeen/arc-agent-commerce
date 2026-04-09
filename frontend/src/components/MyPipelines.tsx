@@ -92,15 +92,17 @@ export function MyPipelines() {
       ) : (
         ids.map((id, idx) => {
           const result = batchPipelines?.[idx];
-          const raw = result && result.status === "success" ? (result.result as unknown[]) : undefined;
+          // pipelines() returns NAMED outputs — viem decodes to an object,
+          // not a positional array. Read by name with indexed fallback.
+          const raw = result && result.status === "success" ? (result.result as any) : undefined;
 
-          const status = raw ? Number(raw[7] ?? 0) : -1;
+          const status = raw ? Number(raw.status ?? raw[7] ?? 0) : -1;
           const statusLabel = PIPELINE_STATUS[status] ?? "Loading";
-          const totalBudget = raw ? ((raw[3] as bigint) ?? BigInt(0)) : BigInt(0);
-          const totalSpent = raw ? ((raw[4] as bigint) ?? BigInt(0)) : BigInt(0);
-          const stageCount = raw ? Number(raw[6] ?? 0) : 0;
-          const currentStage = raw ? Number(raw[5] ?? 0) : 0;
-          const createdAt = raw ? Number(raw[8] ?? 0) : 0;
+          const totalBudget = raw ? BigInt(raw.totalBudget ?? raw[3] ?? 0) : BigInt(0);
+          const totalSpent = raw ? BigInt(raw.totalSpent ?? raw[4] ?? 0) : BigInt(0);
+          const stageCount = raw ? Number(raw.stageCount ?? raw[6] ?? 0) : 0;
+          const currentStage = raw ? Number(raw.currentStage ?? raw[5] ?? 0) : 0;
+          const createdAt = raw ? Number(raw.createdAt ?? raw[8] ?? 0) : 0;
           const isExpanded = expandedId === id;
 
           const completedStages = status === 1 ? stageCount : Math.min(currentStage, stageCount);

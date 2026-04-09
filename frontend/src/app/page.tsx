@@ -14,7 +14,6 @@ import { SpendingPolicyTab } from "@/components/SpendingPolicyTab";
 import { ActivityFeed } from "@/components/ActivityFeed";
 import { AcpJobsExplorer } from "@/components/AcpJobsExplorer";
 import { AgentDirectory } from "@/components/AgentDirectory";
-import { ValidatorMarketplace } from "@/components/ValidatorMarketplace";
 import { AdminPanel } from "@/components/AdminPanel";
 import { Streams } from "@/components/Streams";
 import { WorkflowTemplates } from "@/components/WorkflowTemplates";
@@ -107,7 +106,6 @@ export default function Home() {
           {tab === "activity" && <ActivityFeed onViewAgent={handleViewAgent} />}
           {tab === "acp-jobs" && <AcpJobsExplorer onViewAgent={handleViewAgent} />}
           {tab === "agent-directory" && <AgentDirectory onViewAgent={handleViewAgent} />}
-          {tab === "validators" && <ValidatorMarketplace />}
           {tab === "admin" && <AdminPanel />}
         </main>
       </div>

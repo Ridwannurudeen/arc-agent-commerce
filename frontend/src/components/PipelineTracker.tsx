@@ -57,24 +57,36 @@ export function PipelineTracker({ pipelineId }: Props) {
     chainId: arcTestnet.id,
   });
 
-  // Parse pipeline data
-  const pipelineArr = pipelineRaw as unknown[] | undefined;
-  const pipeline: PipelineData | undefined = pipelineArr
+  // Parse pipeline data — pipelines() returns 10 NAMED outputs, which viem
+  // decodes as an object with named keys (NOT a positional array). Read by
+  // name first, fall back to indexed access for older viem behavior.
+  const pipelineAny = pipelineRaw as any;
+  const pipeline: PipelineData | undefined = pipelineAny
     ? {
-        clientAgentId: (pipelineArr[0] as bigint) ?? BigInt(0),
-        client: (pipelineArr[1] as string) ?? "",
-        currency: (pipelineArr[2] as string) ?? "",
-        totalBudget: (pipelineArr[3] as bigint) ?? BigInt(0),
-        totalSpent: (pipelineArr[4] as bigint) ?? BigInt(0),
-        currentStage: (pipelineArr[5] as bigint) ?? BigInt(0),
-        stageCount: (pipelineArr[6] as bigint) ?? BigInt(0),
-        status: Number(pipelineArr[7] ?? 0),
-        createdAt: (pipelineArr[8] as bigint) ?? BigInt(0),
-        deadline: (pipelineArr[9] as bigint) ?? BigInt(0),
+        clientAgentId: BigInt(pipelineAny.clientAgentId ?? pipelineAny[0] ?? 0),
+        client: (pipelineAny.client ?? pipelineAny[1] ?? "") as string,
+        currency: (pipelineAny.currency ?? pipelineAny[2] ?? "") as string,
+        totalBudget: BigInt(pipelineAny.totalBudget ?? pipelineAny[3] ?? 0),
+        totalSpent: BigInt(pipelineAny.totalSpent ?? pipelineAny[4] ?? 0),
+        currentStage: BigInt(pipelineAny.currentStage ?? pipelineAny[5] ?? 0),
+        stageCount: BigInt(pipelineAny.stageCount ?? pipelineAny[6] ?? 0),
+        status: Number(pipelineAny.status ?? pipelineAny[7] ?? 0),
+        createdAt: BigInt(pipelineAny.createdAt ?? pipelineAny[8] ?? 0),
+        deadline: BigInt(pipelineAny.deadline ?? pipelineAny[9] ?? 0),
       }
     : undefined;
 
-  const stages = (stagesRaw as StageData[] | undefined) ?? [];
+  // Normalize stages — viem returns each stage as a named object where
+  // numeric fields (uint256/uint8) come back as bigint. Coerce to the
+  // shapes the rest of the component expects.
+  const stages: StageData[] = (stagesRaw as any[] | undefined)?.map((s: any) => ({
+    providerAgentId: BigInt(s.providerAgentId ?? s[0] ?? 0),
+    providerAddress: (s.providerAddress ?? s[1] ?? "") as string,
+    capabilityHash: (s.capabilityHash ?? s[2] ?? "") as string,
+    budget: BigInt(s.budget ?? s[3] ?? 0),
+    jobId: BigInt(s.jobId ?? s[4] ?? 0),
+    status: Number(s.status ?? s[5] ?? 0),
+  })) ?? [];
   const isClient = pipeline && address && (pipeline.client || "").toLowerCase() === address.toLowerCase();
   const isActive = pipeline?.status === 0;
   const activeStageIndex = pipeline ? Number(pipeline.currentStage) : -1;
