@@ -23,19 +23,21 @@ export function MyPipelines() {
   const { address } = useAccount();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // Fetch pipeline IDs for connected wallet
+  // Fetch pipeline IDs for connected wallet. Poll so newly-created
+  // pipelines show up while the user is on this tab.
   const { data: pipelineIds, isLoading } = useReadContract({
     address: CONTRACTS.PIPELINE_ORCHESTRATOR,
     abi: PipelineOrchestratorABI,
     functionName: "getClientPipelines",
     args: address ? [address] : undefined,
     chainId: arcTestnet.id,
-    query: { enabled: !!address && !!CONTRACTS.PIPELINE_ORCHESTRATOR },
+    query: { enabled: !!address && !!CONTRACTS.PIPELINE_ORCHESTRATOR, refetchInterval: 3000 },
   });
 
   const ids = ((pipelineIds as bigint[]) ?? []).map(Number).sort((a, b) => b - a);
 
-  // Batch fetch pipeline data for all IDs
+  // Batch fetch pipeline data for all IDs — also polling so status changes
+  // (Active -> Completed, stage transitions, etc.) update live.
   const { data: batchPipelines } = useReadContracts({
     contracts: ids.map((id) => ({
       address: CONTRACTS.PIPELINE_ORCHESTRATOR,
@@ -44,7 +46,7 @@ export function MyPipelines() {
       args: [BigInt(id)],
       chainId: arcTestnet.id,
     })),
-    query: { enabled: ids.length > 0 },
+    query: { enabled: ids.length > 0, refetchInterval: 3000 },
   });
 
   if (!address) {

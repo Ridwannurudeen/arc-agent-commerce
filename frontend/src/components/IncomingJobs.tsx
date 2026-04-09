@@ -35,11 +35,14 @@ export function IncomingJobs() {
   const { address, isConnected } = useAccount();
   const { addToast } = useToast();
 
+  // Poll nextPipelineId so the job list auto-updates when new pipelines
+  // land while the user is on the tab.
   const { data: nextPipelineId } = useReadContract({
     address: CONTRACTS.PIPELINE_ORCHESTRATOR,
     abi: PipelineOrchestratorABI,
     functionName: "nextPipelineId",
     chainId: arcTestnet.id,
+    query: { refetchInterval: 3000 },
   });
 
   const pipelineCount = Number(nextPipelineId ?? 0);
@@ -52,7 +55,7 @@ export function IncomingJobs() {
       args: [BigInt(i)],
       chainId: arcTestnet.id,
     })),
-    query: { enabled: pipelineCount > 0 },
+    query: { enabled: pipelineCount > 0, refetchInterval: 3000 },
   });
 
   // Also fetch each pipeline's status so we can hide stages that belong to
@@ -66,7 +69,7 @@ export function IncomingJobs() {
       args: [BigInt(i)],
       chainId: arcTestnet.id,
     })),
-    query: { enabled: pipelineCount > 0 },
+    query: { enabled: pipelineCount > 0, refetchInterval: 3000 },
   });
 
   const myStages = useMemo(() => {
@@ -107,7 +110,7 @@ export function IncomingJobs() {
       args: [BigInt(jobId)],
       chainId: arcTestnet.id,
     })),
-    query: { enabled: jobIds.length > 0 },
+    query: { enabled: jobIds.length > 0, refetchInterval: 3000 },
   });
 
   const jobs: IncomingJob[] = useMemo(() => {
