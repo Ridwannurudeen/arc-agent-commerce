@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PipelineOrchestrator} from "../src/PipelineOrchestrator.sol";
 import {CommerceHook} from "../src/CommerceHook.sol";
-import {AgentPolicy} from "../src/AgentPolicy.sol";
 import {IAgenticCommerce} from "../src/interfaces/IAgenticCommerce.sol";
 import {MockAgenticCommerce} from "./mocks/MockAgenticCommerce.sol";
 import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
@@ -13,11 +12,10 @@ import {MockReputationRegistry} from "./mocks/MockReputationRegistry.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";
 
 /// @title IntegrationTest
-/// @notice Full lifecycle integration tests across PipelineOrchestrator, CommerceHook, and AgentPolicy
+/// @notice Full lifecycle integration tests across PipelineOrchestrator and CommerceHook
 contract IntegrationTest is Test {
     PipelineOrchestrator orchestrator;
     CommerceHook hook;
-    AgentPolicy policy;
     MockAgenticCommerce acp;
     MockIdentityRegistry identity;
     MockReputationRegistry reputation;
@@ -49,27 +47,19 @@ contract IntegrationTest is Test {
         );
         hook = CommerceHook(address(hookProxy));
 
-        // Deploy AgentPolicy via UUPS proxy
-        AgentPolicy policyImpl = new AgentPolicy();
-        ERC1967Proxy policyProxy = new ERC1967Proxy(
-            address(policyImpl), abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
-        );
-        policy = AgentPolicy(address(policyProxy));
-
         // Deploy PipelineOrchestrator via UUPS proxy
         PipelineOrchestrator orchImpl = new PipelineOrchestrator();
         ERC1967Proxy orchProxy = new ERC1967Proxy(
             address(orchImpl),
             abi.encodeCall(
                 PipelineOrchestrator.initialize,
-                (address(acp), address(usdc), address(identity), address(hook), address(policy), deployer)
+                (address(acp), address(usdc), address(identity), address(hook), deployer)
             )
         );
         orchestrator = PipelineOrchestrator(address(orchProxy));
 
-        // Wire: hook.setOrchestrator, policy.setOrchestrator
+        // Wire: hook.setOrchestrator
         hook.setOrchestrator(address(orchestrator));
-        policy.setOrchestrator(address(orchestrator));
 
         vm.stopPrank();
 
@@ -275,46 +265,7 @@ contract IntegrationTest is Test {
         assertEq(reputation.feedbackCount(), 1, "One reputation feedback from auto-approve");
     }
 
-    // ==================== 4. Pipeline With Policy (passes) ====================
-
-    /// @notice Alice sets policy (maxPerTx=50e6, maxDaily=200e6), creates 2-stage pipeline (50+30=80 < 200) -> succeeds
-    function test_pipelineWithPolicy() public {
-        // Alice sets policy
-        vm.prank(alice);
-        policy.setPolicy(alice, 50e6, 200e6);
-
-        // Create pipeline (total 80 USDC, under 200 daily limit)
-        uint256 pipelineId = _createTwoStagePipeline();
-
-        // Verify pipeline was created successfully
-        (uint256 clientAgentId,,, uint256 totalBudget,,,, PipelineOrchestrator.PipelineStatus status,,) =
-            orchestrator.pipelines(pipelineId);
-        assertEq(clientAgentId, aliceAgentId);
-        assertEq(totalBudget, 80e6);
-        assertEq(uint256(status), uint256(PipelineOrchestrator.PipelineStatus.Active));
-
-        // Verify stages are properly set up
-        PipelineOrchestrator.Stage[] memory stageList = orchestrator.getStages(pipelineId);
-        assertEq(stageList.length, 2);
-        assertEq(uint256(stageList[0].status), uint256(PipelineOrchestrator.StageStatus.Active));
-    }
-
-    // ==================== 5. Pipeline With Policy (reverts) ====================
-
-    /// @notice Alice sets policy (maxDaily=40e6), creates pipeline with total 80e6 -> reverts ExceedsDailyLimit
-    function test_pipelineWithPolicy_revert() public {
-        // Alice sets restrictive daily policy
-        vm.prank(alice);
-        policy.setPolicy(alice, 100e6, 40e6); // maxPerTx=100, maxDaily=40
-
-        // Pipeline needs 80 USDC (50 + 30) which exceeds 40 daily limit
-        PipelineOrchestrator.StageParam[] memory params = _twoStageParams();
-        vm.prank(alice);
-        vm.expectRevert(AgentPolicy.ExceedsDailyLimit.selector);
-        orchestrator.createPipeline(aliceAgentId, params, address(usdc), block.timestamp + 7 days);
-    }
-
-    // ==================== 6. Single Stage Pipeline End-to-End ====================
+    // ==================== 4. Single Stage Pipeline End-to-End ====================
 
     /// @notice 1-stage pipeline: create -> submit -> approve -> completed (equivalent to single job hire)
     function test_singleStagePipeline() public {

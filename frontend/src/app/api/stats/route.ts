@@ -98,7 +98,6 @@ export async function GET() {
         pipelineOrchestrator: CONTRACTS.PIPELINE_ORCHESTRATOR,
         streamEscrow: CONTRACTS.STREAM_ESCROW,
         commerceHook: CONTRACTS.COMMERCE_HOOK,
-        agentPolicy: CONTRACTS.AGENT_POLICY,
       },
     });
   } catch (err) {

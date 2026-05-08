@@ -2,7 +2,7 @@
 pragma solidity ^0.8.30;
 
 import "forge-std/Script.sol";
-import {ServiceEscrow} from "../src/ServiceEscrow.sol";
+import {ServiceEscrow} from "../src/marketplace/ServiceEscrow.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @notice Fix the escrow proxy that was upgraded with the wrong implementation

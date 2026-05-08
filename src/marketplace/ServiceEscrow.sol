@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {IUSDC} from "./interfaces/IUSDC.sol";
-import {IERC8004Identity} from "./interfaces/IERC8004Identity.sol";
-import {IERC8004Reputation} from "./interfaces/IERC8004Reputation.sol";
+import {IUSDC} from "../interfaces/IUSDC.sol";
+import {IERC8004Identity} from "../interfaces/IERC8004Identity.sol";
+import {IERC8004Reputation} from "../interfaces/IERC8004Reputation.sol";
 import {SpendingPolicy} from "./SpendingPolicy.sol";
 import {ServiceMarket} from "./ServiceMarket.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";

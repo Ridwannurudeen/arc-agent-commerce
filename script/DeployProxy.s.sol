@@ -3,9 +3,9 @@ pragma solidity ^0.8.30;
 
 import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ServiceMarket} from "../src/ServiceMarket.sol";
-import {ServiceEscrow} from "../src/ServiceEscrow.sol";
-import {SpendingPolicy} from "../src/SpendingPolicy.sol";
+import {ServiceMarket} from "../src/marketplace/ServiceMarket.sol";
+import {ServiceEscrow} from "../src/marketplace/ServiceEscrow.sol";
+import {SpendingPolicy} from "../src/marketplace/SpendingPolicy.sol";
 
 contract DeployProxyScript is Script {
     function run() external {

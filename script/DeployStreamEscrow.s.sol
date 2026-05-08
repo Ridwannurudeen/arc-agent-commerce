@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {StreamEscrow} from "../src/StreamEscrow.sol";
+import {StreamEscrow} from "../src/marketplace/StreamEscrow.sol";
 
 contract DeployStreamEscrowScript is Script {
     address constant USDC = 0x3600000000000000000000000000000000000000;

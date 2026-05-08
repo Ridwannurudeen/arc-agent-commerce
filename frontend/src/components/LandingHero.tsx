@@ -3,35 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import { useReadContract } from "wagmi";
 import { CONTRACTS, arcTestnet } from "@/config";
-import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
-import StreamEscrowABI from "@/abi/StreamEscrow.json";
+import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
 import { motion, useInView } from "framer-motion";
-import {
-  GitBranch,
-  Radio,
-  Shield,
-  ArrowRight,
-  ExternalLink,
-  Zap,
-  Users,
-  Briefcase,
-  ChevronRight,
-} from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 
 type Props = {
   onLaunch: () => void;
 };
 
 /* ── Animated counter ── */
-function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string }) {
+function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
     if (!inView) return;
-    const duration = 1600;
+    const duration = 1400;
     const start = performance.now();
     const step = (now: number) => {
       const elapsed = now - start;
@@ -43,83 +32,30 @@ function AnimatedNumber({ value, suffix = "" }: { value: number; suffix?: string
     requestAnimationFrame(step);
   }, [inView, value]);
 
-  return (
-    <span ref={ref}>
-      {display.toLocaleString()}
-      {suffix}
-    </span>
-  );
+  return <span ref={ref}>{display.toLocaleString()}</span>;
 }
 
-/* ── Fade wrapper ── */
+/* ── Fade wrappers ── */
 const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" as const } },
 };
 
 const stagger = {
-  visible: { transition: { staggerChildren: 0.15 } },
+  visible: { transition: { staggerChildren: 0.12 } },
 };
 
-/* ── Grid background canvas ── */
-function GridBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId: number;
-    let time = 0;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const draw = () => {
-      time += 0.003;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const spacing = 60;
-      const cols = Math.ceil(canvas.width / spacing) + 1;
-      const rows = Math.ceil(canvas.height / spacing) + 1;
-
-      for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-          const x = i * spacing;
-          const y = j * spacing;
-          const dist = Math.sqrt(
-            Math.pow(x - canvas.width / 2, 2) + Math.pow(y - canvas.height / 2, 2)
-          );
-          const pulse = Math.sin(time * 2 - dist * 0.004) * 0.5 + 0.5;
-          const alpha = 0.03 + pulse * 0.06;
-
-          ctx.beginPath();
-          ctx.arc(x, y, 1.2, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
-          ctx.fill();
-        }
-      }
-
-      animId = requestAnimationFrame(draw);
-    };
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="landing-grid-bg" />;
+/* ── Subtle paper-grain background ── */
+function PaperBackground() {
+  return (
+    <div className="landing-paper-bg" aria-hidden="true">
+      <div className="landing-paper-rule landing-paper-rule-top" />
+      <div className="landing-paper-rule landing-paper-rule-bottom" />
+    </div>
+  );
 }
 
-/* ── Contract address display ── */
+/* ── Contract address row ── */
 function ContractRow({ name, address }: { name: string; address: string }) {
   return (
     <div className="landing-contract-row">
@@ -130,8 +66,8 @@ function ContractRow({ name, address }: { name: string; address: string }) {
         rel="noopener noreferrer"
         className="landing-contract-addr"
       >
-        {address.slice(0, 6)}...{address.slice(-4)}
-        <ExternalLink size={12} />
+        <span className="landing-contract-addr-mono">{address}</span>
+        <ExternalLink size={11} />
       </a>
     </div>
   );
@@ -139,11 +75,11 @@ function ContractRow({ name, address }: { name: string; address: string }) {
 
 /* ── Main component ── */
 export function LandingHero({ onLaunch }: Props) {
-  /* On-chain stats */
-  const { data: nextServiceId } = useReadContract({
-    address: CONTRACTS.SERVICE_MARKET,
-    abi: ServiceMarketABI,
-    functionName: "nextServiceId",
+  /* On-chain truth — only real, verifiable numbers */
+  const { data: nextPipelineId } = useReadContract({
+    address: CONTRACTS.PIPELINE_ORCHESTRATOR,
+    abi: PipelineOrchestratorABI,
+    functionName: "nextPipelineId",
     chainId: arcTestnet.id,
   });
 
@@ -154,66 +90,20 @@ export function LandingHero({ onLaunch }: Props) {
     chainId: arcTestnet.id,
   });
 
-  const { data: streamCount } = useReadContract({
-    address: CONTRACTS.STREAM_ESCROW,
-    abi: StreamEscrowABI,
-    functionName: "streamCount",
-    chainId: arcTestnet.id,
-  });
-
-  const services = Number(nextServiceId ?? 17);
-  const jobs = Number(jobCounter ?? 1050);
-  const streams = Number(streamCount ?? 0);
-
-  const stats = [
-    { label: "Services Listed", value: services, icon: Briefcase, suffix: "" },
-    { label: "Registered Agents", value: 1500, icon: Users, suffix: "+" },
-    { label: "Jobs Completed", value: jobs > 0 ? jobs : 1050, icon: Zap, suffix: "+" },
-    { label: "Active Streams", value: streams, icon: Radio, suffix: "" },
-  ];
-
-  const features = [
-    {
-      icon: GitBranch,
-      title: "Pipeline Orchestration",
-      desc: "Multi-stage workflows with conditional execution. Define audit, deploy, and monitor stages that chain automatically with atomic USDC funding.",
-      color: "var(--accent)",
-    },
-    {
-      icon: Radio,
-      title: "Streaming Payments",
-      desc: "Heartbeat-gated escrow. Pay agents per-second with auto-pause on disconnect and automatic fund recovery for missed heartbeats.",
-      color: "var(--cyan)",
-    },
-    {
-      icon: Shield,
-      title: "On-Chain Reputation",
-      desc: "ERC-8004 identity and reputation. Every stage completion builds a verifiable track record that follows your agent across the network.",
-      color: "var(--green)",
-    },
-  ];
-
-  const steps = [
-    {
-      num: "01",
-      title: "Register",
-      desc: "Register your AI agent with ERC-8004 identity. Set capabilities, pricing, and metadata on-chain.",
-    },
-    {
-      num: "02",
-      title: "Create Pipeline",
-      desc: "Define multi-stage workflows. Assign agents to each stage and fund the entire pipeline atomically in USDC.",
-    },
-    {
-      num: "03",
-      title: "Execute & Earn",
-      desc: "Agents complete stages sequentially. USDC releases per-stage on completion. Reputation accrues automatically.",
-    },
-  ];
+  const pipelines = Number(nextPipelineId ?? 0);
+  const jobs = Number(jobCounter ?? 0);
 
   return (
     <div className="landing-root">
-      <GridBackground />
+      <PaperBackground />
+
+      {/* ── Masthead ── */}
+      <header className="landing-masthead">
+        <div className="landing-masthead-inner">
+          <span className="landing-masthead-mark">Agent Commerce Protocol</span>
+          <span className="landing-masthead-meta">Arc Testnet · v3</span>
+        </div>
+      </header>
 
       {/* ── Hero ── */}
       <section className="landing-hero">
@@ -223,61 +113,57 @@ export function LandingHero({ onLaunch }: Props) {
           animate="visible"
           variants={stagger}
         >
-          <motion.div className="landing-badge" variants={fadeUp}>
-            <span className="landing-badge-dot" />
-            Live on Arc Testnet
+          <motion.div className="landing-eyebrow" variants={fadeUp}>
+            <span className="landing-eyebrow-dot" />
+            Live on Arc Testnet · Pipeline #0 settled on-chain
           </motion.div>
 
           <motion.h1 className="landing-h1" variants={fadeUp}>
-            The Agent Workflow{" "}
-            <span className="landing-gradient-text">Router</span>
+            An <em>ERC&#8209;8183</em> conditional sequencer.
           </motion.h1>
 
-          <motion.p className="landing-subtitle" variants={fadeUp}>
-            Any app, wallet, or AI agent on Arc can create trusted multi-step workflows,
-            route work to verified agents, escrow stablecoin payments, and build portable ERC-8004 reputation.
+          <motion.p className="landing-lede" variants={fadeUp}>
+            A small, composable primitive on Arc. Define an ordered sequence of
+            ERC&#8209;8183 jobs, fund them in one transaction, and let the protocol
+            advance &mdash; or atomically refund &mdash; on each stage&rsquo;s outcome.
           </motion.p>
 
           <motion.div className="landing-cta-row" variants={fadeUp}>
             <button className="landing-cta-primary" onClick={onLaunch}>
-              Launch App
-              <ArrowRight size={18} />
+              Open the protocol
+              <ArrowRight size={16} />
             </button>
             <a
               href="https://github.com/Ridwannurudeen/arc-agent-commerce"
               target="_blank"
               rel="noopener noreferrer"
-              className="landing-cta-outline"
+              className="landing-cta-link"
             >
-              View on GitHub
-              <ExternalLink size={16} />
+              Source on GitHub
+              <ExternalLink size={13} />
             </a>
           </motion.div>
+
+          <motion.figure className="landing-codefig" variants={fadeUp}>
+            <pre className="landing-codeblock">
+{`pipeline = orchestrator.create(
+    client_agent_id   = 933,
+    stages = [
+        { provider, capability: "audit",  budget_usdc: 50 },
+        { provider, capability: "deploy", budget_usdc: 30 },
+    ],
+    currency = USDC,
+)`}
+            </pre>
+            <figcaption className="landing-codecaption">
+              Fig. 1 &mdash; A two-stage pipeline. Stage 2 starts only if stage 1 is approved;
+              if stage 1 is rejected, stage 2&rsquo;s budget is refunded in the same transaction.
+            </figcaption>
+          </motion.figure>
         </motion.div>
       </section>
 
-      {/* ── Stats ── */}
-      <motion.section
-        className="landing-section"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.3 }}
-        variants={stagger}
-      >
-        <div className="landing-stats">
-          {stats.map((s) => (
-            <motion.div key={s.label} className="landing-stat-card" variants={fadeUp}>
-              <s.icon size={20} className="landing-stat-icon" />
-              <div className="landing-stat-value">
-                <AnimatedNumber value={s.value} suffix={s.suffix} />
-              </div>
-              <div className="landing-stat-label">{s.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
-
-      {/* ── Features ── */}
+      {/* ── Anatomy ── */}
       <motion.section
         className="landing-section"
         initial="hidden"
@@ -285,111 +171,181 @@ export function LandingHero({ onLaunch }: Props) {
         viewport={{ once: true, amount: 0.2 }}
         variants={stagger}
       >
-        <motion.h2 className="landing-section-title" variants={fadeUp}>
-          Built for Agent-to-Agent Commerce
-        </motion.h2>
-        <motion.p className="landing-section-sub" variants={fadeUp}>
-          Everything AI agents need to discover, negotiate, and pay each other on-chain.
-        </motion.p>
-        <div className="landing-features">
-          {features.map((f) => (
-            <motion.div key={f.title} className="landing-feature-card" variants={fadeUp}>
-              <div
-                className="landing-feature-icon"
-                style={{ background: `${f.color}15`, color: f.color }}
-              >
-                <f.icon size={24} />
-              </div>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-            </motion.div>
-          ))}
+        <motion.div className="landing-section-head" variants={fadeUp}>
+          <span className="landing-section-num">I.</span>
+          <h2 className="landing-section-title">Anatomy of the primitive</h2>
+        </motion.div>
+
+        <div className="landing-anatomy">
+          <motion.article className="landing-anatomy-item" variants={fadeUp}>
+            <header>
+              <span className="landing-anatomy-label">Contract</span>
+              <h3>PipelineOrchestrator</h3>
+            </header>
+            <p>
+              Holds the sequence and the total budget. Creates one ERC&#8209;8183 job per
+              stage on demand. Advances on approval, halts on rejection or cancellation,
+              and refunds any unspent budget in the same call. Roughly 370 lines of
+              Solidity. The contract owns no escrow of its own &mdash; ERC&#8209;8183 does.
+            </p>
+          </motion.article>
+
+          <motion.article className="landing-anatomy-item" variants={fadeUp}>
+            <header>
+              <span className="landing-anatomy-label">Contract</span>
+              <h3>CommerceHook</h3>
+            </header>
+            <p>
+              The evaluator on every ERC&#8209;8183 job in the pipeline. Approval is
+              currently driven manually by the pipeline client through{" "}
+              <code>approveStage()</code> and <code>rejectStage()</code>. The{" "}
+              <code>afterAction</code> callback surface is in place for autonomous
+              evaluation; it&rsquo;s a configuration concern, not a code change.
+            </p>
+          </motion.article>
+
+          <motion.article className="landing-anatomy-item" variants={fadeUp}>
+            <header>
+              <span className="landing-anatomy-label">Composition</span>
+              <h3>What it does not own</h3>
+            </header>
+            <p>
+              No new escrow. No new identity layer. No new token. Stage funds live in
+              ERC&#8209;8183. Reputation lives on ERC&#8209;8004. Currency is whatever
+              ERC&#8209;20 the owner allowlists &mdash; USDC and EURC by default.
+              The protocol is a coordination layer, not a settlement layer.
+            </p>
+          </motion.article>
         </div>
       </motion.section>
 
-      {/* ── How It Works ── */}
+      {/* ── On-chain truth ── */}
       <motion.section
-        className="landing-section"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-        variants={stagger}
-      >
-        <motion.h2 className="landing-section-title" variants={fadeUp}>
-          How It Works
-        </motion.h2>
-        <div className="landing-steps">
-          {steps.map((s, i) => (
-            <motion.div key={s.num} className="landing-step" variants={fadeUp}>
-              <div className="landing-step-num">{s.num}</div>
-              <h3>{s.title}</h3>
-              <p>{s.desc}</p>
-              {i < steps.length - 1 && (
-                <ChevronRight size={20} className="landing-step-arrow" />
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
-
-      {/* ── Built on Arc ── */}
-      <motion.section
-        className="landing-section landing-arc-section"
+        className="landing-section landing-section-figures"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
         variants={stagger}
       >
-        <motion.h2 className="landing-section-title" variants={fadeUp}>
-          Deployed on Arc L1
-        </motion.h2>
+        <motion.div className="landing-section-head" variants={fadeUp}>
+          <span className="landing-section-num">II.</span>
+          <h2 className="landing-section-title">On-chain truth</h2>
+        </motion.div>
         <motion.p className="landing-section-sub" variants={fadeUp}>
-          Composing Arc&apos;s native ERC-8183 job escrow and ERC-8004 identity stack.
-          Every contract is verified and live on testnet.
+          The numbers below come directly from the deployed contracts. No inflation,
+          no projections.
         </motion.p>
+
+        <div className="landing-figures">
+          <motion.div className="landing-figure" variants={fadeUp}>
+            <div className="landing-figure-value">
+              <AnimatedNumber value={pipelines} />
+            </div>
+            <div className="landing-figure-label">Pipelines created</div>
+            <div className="landing-figure-source">
+              <code>nextPipelineId</code> on PipelineOrchestrator
+            </div>
+          </motion.div>
+
+          <motion.div className="landing-figure" variants={fadeUp}>
+            <div className="landing-figure-value">
+              <AnimatedNumber value={jobs} />
+            </div>
+            <div className="landing-figure-label">ERC&#8209;8183 jobs</div>
+            <div className="landing-figure-source">
+              <code>jobCounter</code> on AgenticCommerce
+            </div>
+          </motion.div>
+
+          <motion.div className="landing-figure" variants={fadeUp}>
+            <div className="landing-figure-value">177</div>
+            <div className="landing-figure-label">Tests passing</div>
+            <div className="landing-figure-source">
+              118 Solidity · 59 Python · CI green
+            </div>
+          </motion.div>
+        </div>
+      </motion.section>
+
+      {/* ── Deployed ── */}
+      <motion.section
+        className="landing-section"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.3 }}
+        variants={stagger}
+      >
+        <motion.div className="landing-section-head" variants={fadeUp}>
+          <span className="landing-section-num">III.</span>
+          <h2 className="landing-section-title">Deployed on Arc Testnet</h2>
+        </motion.div>
+        <motion.p className="landing-section-sub" variants={fadeUp}>
+          The two contracts that constitute the primitive, plus the Arc-native
+          stack the protocol composes.
+        </motion.p>
+
         <motion.div className="landing-contracts" variants={fadeUp}>
           <ContractRow name="PipelineOrchestrator" address="0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720" />
           <ContractRow name="CommerceHook" address="0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f" />
-          <ContractRow name="StreamEscrow" address="0x1501566F49290d5701546D7De837Cb516c121Fb6" />
-          <ContractRow name="AgentPolicy" address="0xB172b27Af9E084D574817b080C04a7629c606c0E" />
+          <ContractRow name="AgenticCommerce (ERC-8183)" address="0x0747EEf0706327138c69792bF28Cd525089e4583" />
           <ContractRow name="IdentityRegistry (ERC-8004)" address="0x8004A818BFB912233c491871b3d84c89A494BD9e" />
         </motion.div>
+
         <motion.a
           href="https://testnet.arcscan.app"
           target="_blank"
           rel="noopener noreferrer"
-          className="landing-arc-link"
+          className="landing-explorer-link"
           variants={fadeUp}
         >
-          View on Arc Explorer <ExternalLink size={14} />
+          Verify on Arc Explorer
+          <ExternalLink size={13} />
         </motion.a>
       </motion.section>
 
       {/* ── Footer ── */}
       <footer className="landing-footer">
         <div className="landing-footer-inner">
-          <p className="landing-footer-title">
-            Built for the <span className="landing-gradient-text">Arc Builders Fund</span>
-          </p>
-          <div className="landing-footer-links">
-            <a
-              href="https://github.com/Ridwannurudeen/arc-agent-commerce"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub <ExternalLink size={12} />
-            </a>
-            <a
-              href="https://testnet.arcscan.app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Arc Explorer <ExternalLink size={12} />
-            </a>
+          <div className="landing-footer-cols">
+            <div>
+              <div className="landing-footer-label">Protocol</div>
+              <p className="landing-footer-text">
+                An ERC&#8209;8183 conditional sequencer on Arc.
+                Composable, fee-free, currency-agnostic.
+              </p>
+            </div>
+            <div>
+              <div className="landing-footer-label">Source &amp; explorer</div>
+              <div className="landing-footer-links">
+                <a
+                  href="https://github.com/Ridwannurudeen/arc-agent-commerce"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub <ExternalLink size={11} />
+                </a>
+                <a
+                  href="https://testnet.arcscan.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Arc Explorer <ExternalLink size={11} />
+                </a>
+              </div>
+            </div>
+            <div>
+              <div className="landing-footer-label">Status</div>
+              <p className="landing-footer-text">
+                Live on Arc Testnet. Pipeline&nbsp;#0 settled on-chain.
+                Mainnet pending audit.
+              </p>
+            </div>
           </div>
-          <p className="landing-footer-copy">
-            Agent Commerce Protocol &mdash; Multi-agent pipeline orchestration on Arc L1
-          </p>
+          <div className="landing-footer-rule" />
+          <div className="landing-footer-bottom">
+            <span>Agent Commerce Protocol</span>
+            <span>Arc · 2026</span>
+          </div>
         </div>
       </footer>
     </div>

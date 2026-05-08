@@ -16,7 +16,6 @@ from arc_commerce.constants import (
     IDENTITY_REGISTRY_ADDRESS,
     PIPELINE_ORCHESTRATOR_ADDRESS,
     COMMERCE_HOOK_ADDRESS,
-    AGENT_POLICY_ADDRESS,
     STREAM_ESCROW_ADDRESS,
     get_network_config,
 )
@@ -31,7 +30,6 @@ from arc_commerce.abi import (
     IDENTITY_REGISTRY_ABI,
     PIPELINE_ORCHESTRATOR_ABI,
     COMMERCE_HOOK_ABI,
-    AGENT_POLICY_ABI,
     ERC20_ABI,
 )
 from arc_commerce.errors import (
@@ -57,7 +55,6 @@ class ArcCommerce:
         policy_address: str = None,
         orchestrator_address: str = None,
         hook_address: str = None,
-        agent_policy_address: str = None,
         stream_escrow_address: str = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
@@ -114,11 +111,9 @@ class ArcCommerce:
         # V3 pipeline contracts (optional — only instantiated if addresses are set)
         orch_addr = orchestrator_address or config.get("pipeline_orchestrator", PIPELINE_ORCHESTRATOR_ADDRESS)
         hook_addr = hook_address or config.get("commerce_hook", COMMERCE_HOOK_ADDRESS)
-        apolicy_addr = agent_policy_address or config.get("agent_policy", AGENT_POLICY_ADDRESS)
 
         self.orchestrator = None
         self.hook = None
-        self.agent_policy = None
 
         if orch_addr:
             self.orchestrator = self.w3.eth.contract(
@@ -129,11 +124,6 @@ class ArcCommerce:
             self.hook = self.w3.eth.contract(
                 address=Web3.to_checksum_address(hook_addr),
                 abi=COMMERCE_HOOK_ABI,
-            )
-        if apolicy_addr:
-            self.agent_policy = self.w3.eth.contract(
-                address=Web3.to_checksum_address(apolicy_addr),
-                abi=AGENT_POLICY_ABI,
             )
 
         # StreamEscrow (optional)

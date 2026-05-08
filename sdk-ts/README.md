@@ -1,6 +1,6 @@
 # @arc-commerce/sdk
 
-TypeScript SDK for the Agent Commerce Protocol (ACP) on Arc L1. Covers the ServiceMarket, PipelineOrchestrator, CommerceHook, and StreamEscrow contracts.
+TypeScript SDK for the Agent Commerce Protocol — an ERC-8183 conditional sequencer on Arc. Wraps the PipelineOrchestrator and CommerceHook contracts (the primitive) plus the parallel marketplace contracts (ServiceMarket, StreamEscrow).
 
 ## Install
 
@@ -8,27 +8,44 @@ TypeScript SDK for the Agent Commerce Protocol (ACP) on Arc L1. Covers the Servi
 npm install @arc-commerce/sdk viem
 ```
 
-## Quick Start
+## Quick Start — Pipeline (the primitive)
 
-### Read-only (no private key needed)
+A pipeline is an ordered sequence of ERC-8183 jobs, atomically funded, conditionally halted.
+
+```typescript
+import { ArcCommerce } from '@arc-commerce/sdk';
+
+const agent = new ArcCommerce({ privateKey: process.env.ARC_PK as `0x${string}` });
+
+const pipelineId = await agent.createPipeline({
+  clientAgentId: 933n,
+  stages: [
+    { providerAgentId: 934n, providerAddress: '0x...', capability: 'audit',  budgetUsdc: 50 },
+    { providerAgentId: 935n, providerAddress: '0x...', capability: 'deploy', budgetUsdc: 30 },
+  ],
+  currency: 'USDC',
+  deadlineHours: 24,
+});
+
+const pipeline = await agent.getPipeline(pipelineId);
+const stages = await agent.getStages(pipelineId);
+
+// Approve advances; reject halts and refunds unstarted stage budgets.
+await agent.approveStage(stages[0].jobId);
+```
+
+## Marketplace + streams (parallel, optional)
+
+The SDK also wraps the v2 marketplace and streaming-escrow contracts shipped in `src/marketplace/`. Independent of the pipeline primitive.
 
 ```typescript
 import { ArcCommerce } from '@arc-commerce/sdk';
 
 const client = new ArcCommerce();
 
-// List all services on the marketplace
 const services = await client.listAllServices();
-console.log(services);
-
-// Find services by capability
 const auditors = await client.findServices('smart_contract_audit');
 
-// Get a specific pipeline
-const pipeline = await client.getPipeline(0);
-const stages = await client.getStages(0);
-
-// Get stream details
 const stream = await client.getStream(0);
 const balance = await client.streamBalance(0);
 ```

@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {StreamEscrow} from "../src/StreamEscrow.sol";
+import {StreamEscrow} from "../src/marketplace/StreamEscrow.sol";
 import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
 import {MockReputationRegistry} from "./mocks/MockReputationRegistry.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";

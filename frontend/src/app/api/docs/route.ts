@@ -40,7 +40,6 @@ export async function GET() {
               pipelineOrchestrator: "0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720",
               streamEscrow: "0x1501566F49290d5701546D7De837Cb516c121Fb6",
               commerceHook: "0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f",
-              agentPolicy: "0xB172b27Af9E084D574817b080C04a7629c606c0E",
             },
           },
         },

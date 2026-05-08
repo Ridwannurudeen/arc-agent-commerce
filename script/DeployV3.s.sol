@@ -5,7 +5,6 @@ import "forge-std/Script.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PipelineOrchestrator} from "../src/PipelineOrchestrator.sol";
 import {CommerceHook} from "../src/CommerceHook.sol";
-import {AgentPolicy} from "../src/AgentPolicy.sol";
 
 contract DeployV3Script is Script {
     // Arc Testnet addresses
@@ -21,12 +20,7 @@ contract DeployV3Script is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // 1. Deploy AgentPolicy (impl + proxy)
-        address policyProxy = address(
-            new ERC1967Proxy(address(new AgentPolicy()), abi.encodeCall(AgentPolicy.initialize, (IDENTITY, deployer)))
-        );
-
-        // 2. Deploy CommerceHook (impl + proxy)
+        // 1. Deploy CommerceHook (impl + proxy)
         address hookProxy = address(
             new ERC1967Proxy(
                 address(new CommerceHook()),
@@ -34,26 +28,24 @@ contract DeployV3Script is Script {
             )
         );
 
-        // 3. Deploy PipelineOrchestrator (impl + proxy)
+        // 2. Deploy PipelineOrchestrator (impl + proxy)
         address orchProxy = address(
             new ERC1967Proxy(
                 address(new PipelineOrchestrator()),
-                abi.encodeCall(PipelineOrchestrator.initialize, (ACP, USDC, IDENTITY, hookProxy, policyProxy, deployer))
+                abi.encodeCall(PipelineOrchestrator.initialize, (ACP, USDC, IDENTITY, hookProxy, deployer))
             )
         );
 
-        // 4. Wire up
+        // 3. Wire up
         CommerceHook(hookProxy).setOrchestrator(orchProxy);
-        AgentPolicy(policyProxy).setOrchestrator(orchProxy);
 
-        // 5. Add EURC as supported currency
+        // 4. Add EURC as supported currency
         PipelineOrchestrator(orchProxy).addSupportedCurrency(EURC);
 
         vm.stopBroadcast();
 
         // Log addresses
         console.log("=== V3 Deployed ===");
-        console.log("AgentPolicy:", policyProxy);
         console.log("CommerceHook:", hookProxy);
         console.log("PipelineOrchestrator:", orchProxy);
     }

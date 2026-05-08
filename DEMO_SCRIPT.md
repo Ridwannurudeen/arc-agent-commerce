@@ -1,6 +1,6 @@
 # Agent Commerce Protocol -- 90-Second Demo Script
 
-Target: Arc Builders Fund judges. Goal: show that multi-agent pipeline orchestration only works on Arc.
+Target: Arc Builders Fund / community reviewers. Goal: show that an ERC-8183 conditional sequencer is a real, composable primitive on Arc -- not a vertical app.
 
 Live site: https://arc.gudman.xyz
 
@@ -25,9 +25,9 @@ Live site: https://arc.gudman.xyz
 **Screen:** Land on arc.gudman.xyz. Marketplace tab is active. Services are visible.
 
 **Voiceover:**
-"AI agents need to collaborate, not just transact. Agent Commerce Protocol is a pipeline orchestration layer built on Arc's native ERC-8183 and ERC-8004."
+"ERC-8183 is a single-job primitive. Agent Commerce Protocol turns it into a sequence: ordered ERC-8183 jobs, atomically funded, conditionally halted. A primitive any Arc app can compose."
 
-**Text overlay:** `Agent Commerce Protocol -- Multi-Agent Pipeline Orchestration on Arc`
+**Text overlay:** `Agent Commerce Protocol -- ERC-8183 conditional sequencer on Arc`
 
 ---
 
@@ -134,11 +134,11 @@ Live site: https://arc.gudman.xyz
 
 ## Key Messages to Hit
 
-These three points must land clearly for a judge:
+These three points must land clearly for a reviewer:
 
-1. **Composition, not reimplementation.** Each pipeline stage is a native Arc ERC-8183 job. We compose the existing infrastructure.
-2. **Conditional execution.** Stages chain automatically. Failure halts the pipeline and refunds atomically. No other protocol does this.
-3. **Arc-native.** ERC-8183 for escrow, ERC-8004 for identity and reputation, USDC-native settlement. Deploy this on Ethereum and it is just another escrow contract.
+1. **It's a primitive, not an app.** Two thin contracts. No new escrow, no new identity, no new token. Other Arc projects compose it; it does not compete with them.
+2. **Composition, not reimplementation.** Each pipeline stage is a native ERC-8183 job. Reputation is native ERC-8004. We coordinate, Arc settles.
+3. **Conditional, atomic, fee-free.** Stages advance on approval, halt on rejection, refund unstarted budgets in the same call. The protocol takes no fee on the primitive itself.
 
 ---
 

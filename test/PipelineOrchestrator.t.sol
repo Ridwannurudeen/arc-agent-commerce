@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {PipelineOrchestrator} from "../src/PipelineOrchestrator.sol";
 import {CommerceHook} from "../src/CommerceHook.sol";
-import {AgentPolicy} from "../src/AgentPolicy.sol";
 import {MockAgenticCommerce} from "./mocks/MockAgenticCommerce.sol";
 import {MockIdentityRegistry} from "./mocks/MockIdentityRegistry.sol";
 import {MockReputationRegistry} from "./mocks/MockReputationRegistry.sol";
@@ -14,7 +13,6 @@ import {MockUSDC} from "./mocks/MockUSDC.sol";
 contract PipelineOrchestratorTest is Test {
     PipelineOrchestrator orchestrator;
     CommerceHook hook;
-    AgentPolicy policy;
     MockAgenticCommerce acp;
     MockIdentityRegistry identity;
     MockReputationRegistry reputation;
@@ -46,27 +44,19 @@ contract PipelineOrchestratorTest is Test {
         );
         hook = CommerceHook(address(hookProxy));
 
-        // Deploy AgentPolicy via UUPS proxy
-        AgentPolicy policyImpl = new AgentPolicy();
-        ERC1967Proxy policyProxy = new ERC1967Proxy(
-            address(policyImpl), abi.encodeCall(AgentPolicy.initialize, (address(identity), deployer))
-        );
-        policy = AgentPolicy(address(policyProxy));
-
         // Deploy PipelineOrchestrator via UUPS proxy
         PipelineOrchestrator orchImpl = new PipelineOrchestrator();
         ERC1967Proxy orchProxy = new ERC1967Proxy(
             address(orchImpl),
             abi.encodeCall(
                 PipelineOrchestrator.initialize,
-                (address(acp), address(usdc), address(identity), address(hook), address(policy), deployer)
+                (address(acp), address(usdc), address(identity), address(hook), deployer)
             )
         );
         orchestrator = PipelineOrchestrator(address(orchProxy));
 
-        // Wire: hook.setOrchestrator, policy.setOrchestrator
+        // Wire: hook.setOrchestrator
         hook.setOrchestrator(address(orchestrator));
-        policy.setOrchestrator(address(orchestrator));
 
         vm.stopPrank();
 
@@ -313,20 +303,6 @@ contract PipelineOrchestratorTest is Test {
         PipelineOrchestrator.Stage[] memory stageList = orchestrator.getStages(pipelineId);
         assertEq(uint256(stageList[0].status), uint256(PipelineOrchestrator.StageStatus.Failed));
         assertEq(uint256(stageList[1].status), uint256(PipelineOrchestrator.StageStatus.Failed));
-    }
-
-    // ==================== Policy check ====================
-
-    function test_createPipeline_policyCheck() public {
-        // Set a daily limit lower than the pipeline total budget (80e6)
-        vm.prank(alice);
-        policy.setPolicy(alice, 100e6, 50e6); // daily limit = 50 USDC, pipeline needs 80
-
-        PipelineOrchestrator.StageParam[] memory params = _twoStageParams();
-
-        vm.prank(alice);
-        vm.expectRevert(AgentPolicy.ExceedsDailyLimit.selector);
-        orchestrator.createPipeline(aliceAgentId, params, address(usdc), block.timestamp + 7 days);
     }
 
     // ==================== Single stage pipeline ====================

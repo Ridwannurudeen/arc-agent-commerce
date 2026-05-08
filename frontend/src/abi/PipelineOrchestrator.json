@@ -52,19 +52,6 @@
   },
   {
     "type": "function",
-    "name": "agentPolicy",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract AgentPolicy"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "cancelPipeline",
     "inputs": [
       {
@@ -262,11 +249,6 @@
       },
       {
         "name": "commerceHook_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "agentPolicy_",
         "type": "address",
         "internalType": "address"
       },

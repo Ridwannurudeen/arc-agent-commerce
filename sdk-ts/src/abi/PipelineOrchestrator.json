@@ -52,19 +52,6 @@
   },
   {
     "type": "function",
-    "name": "agentPolicy",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract AgentPolicy"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "cancelPipeline",
     "inputs": [
       {
@@ -143,6 +130,19 @@
         "internalType": "uint256"
       }
     ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fundStage",
+    "inputs": [
+      {
+        "name": "pipelineId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -249,11 +249,6 @@
       },
       {
         "name": "commerceHook_",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "agentPolicy_",
         "type": "address",
         "internalType": "address"
       },

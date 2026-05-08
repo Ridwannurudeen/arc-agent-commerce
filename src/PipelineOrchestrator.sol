@@ -4,7 +4,6 @@ pragma solidity ^0.8.30;
 import {IAgenticCommerce} from "./interfaces/IAgenticCommerce.sol";
 import {IERC8004Identity} from "./interfaces/IERC8004Identity.sol";
 import {CommerceHook} from "./CommerceHook.sol";
-import {AgentPolicy} from "./AgentPolicy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -89,7 +88,6 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
     IERC20 public usdc;
     IERC8004Identity public identityRegistry;
     CommerceHook public commerceHook;
-    AgentPolicy public agentPolicy;
 
     mapping(address => bool) public supportedCurrencies;
     mapping(uint256 => Pipeline) public pipelines;
@@ -120,7 +118,6 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
         address usdc_,
         address identityRegistry_,
         address commerceHook_,
-        address agentPolicy_,
         address owner_
     ) external initializer {
         __Pausable_init();
@@ -131,7 +128,6 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
         usdc = IERC20(usdc_);
         identityRegistry = IERC8004Identity(identityRegistry_);
         commerceHook = CommerceHook(commerceHook_);
-        agentPolicy = AgentPolicy(agentPolicy_);
 
         supportedCurrencies[usdc_] = true;
     }
@@ -179,9 +175,6 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
         for (uint256 i; i < stageParams.length; i++) {
             totalBudget += stageParams[i].budget;
         }
-
-        // Policy check — reverts if over daily limit
-        agentPolicy.checkPipelineBudget(msg.sender, totalBudget);
 
         // Pull total budget from client
         IERC20(currency).safeTransferFrom(msg.sender, address(this), totalBudget);

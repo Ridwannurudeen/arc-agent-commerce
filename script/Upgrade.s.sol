@@ -2,9 +2,9 @@
 pragma solidity ^0.8.30;
 
 import "forge-std/Script.sol";
-import {ServiceMarket} from "../src/ServiceMarket.sol";
-import {ServiceEscrow} from "../src/ServiceEscrow.sol";
-import {SpendingPolicy} from "../src/SpendingPolicy.sol";
+import {ServiceMarket} from "../src/marketplace/ServiceMarket.sol";
+import {ServiceEscrow} from "../src/marketplace/ServiceEscrow.sol";
+import {SpendingPolicy} from "../src/marketplace/SpendingPolicy.sol";
 
 contract UpgradeScript is Script {
     function run() external {
