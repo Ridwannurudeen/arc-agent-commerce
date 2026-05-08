@@ -113,13 +113,10 @@ contract PipelineOrchestrator is Initializable, UUPSUpgradeable, PausableUpgrade
 
     // ---- Initializer ----
 
-    function initialize(
-        address acp_,
-        address usdc_,
-        address identityRegistry_,
-        address commerceHook_,
-        address owner_
-    ) external initializer {
+    function initialize(address acp_, address usdc_, address identityRegistry_, address commerceHook_, address owner_)
+        external
+        initializer
+    {
         __Pausable_init();
         __Ownable_init(owner_);
         __Ownable2Step_init();
