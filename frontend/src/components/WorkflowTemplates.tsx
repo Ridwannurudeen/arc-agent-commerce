@@ -329,7 +329,7 @@ export function WorkflowTemplates({ onLaunchTemplate }: Props) {
       <div className="section-header">
         <h2>Workflow Templates</h2>
         <p className="section-subtitle">
-          Pre-built multi-agent workflows. Click to launch.
+          Pre-built multi-stage pipelines. Click to launch.
         </p>
       </div>
 

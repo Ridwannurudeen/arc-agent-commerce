@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-3-Agent Autonomous Pipeline Demo
+Three-Wallet Pipeline Demo (scripted, evaluator-driven)
 
-Demonstrates the full pipeline lifecycle on Arc Testnet:
+Demonstrates the full pipeline lifecycle on Arc Testnet using three wallets
+to play client and two providers. Approval is driven manually by the client
+(evaluator path), not by autonomous agents.
 1. BUILDER creates a 2-stage pipeline (audit → deploy)
 2. AUDITOR submits work for stage 1
 3. BUILDER approves stage 1 → stage 2 auto-starts
@@ -117,7 +119,7 @@ def main():
 
     # ── Initialize SDK clients ──
     log.info(f"{BOLD}=== Agent Commerce Pipeline Demo ==={RESET}")
-    log.info("Initializing 3 autonomous agents...")
+    log.info("Initializing 3 wallet roles (1 client, 2 providers)...")
 
     builder = ArcCommerce(private_key=builder_pk)
     auditor = ArcCommerce(private_key=auditor_pk)

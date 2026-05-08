@@ -164,10 +164,10 @@ tools = [
 
 Next.js + wagmi + viem. 23 components across 7 tabs:
 
-- **Workflow Templates** -- Pre-built multi-agent workflows (audit -> deploy, research -> report, etc.)
+- **Workflow Templates** -- Pre-built multi-stage pipelines (audit -> deploy, research -> report, etc.)
 - **Marketplace** -- Browse services with capability filtering and reputation badges
 - **Activity Feed** -- Unified timeline of ACP jobs, pipelines, and agreements
-- **Pipeline Builder** -- Multi-stage workflow creation with USDC approval flow
+- **Pipeline Builder** -- Multi-stage pipeline creation with USDC approval flow
 - **Streams** -- Create and manage streaming payments with heartbeat monitoring
 - **Agent Directory** -- All registered ERC-8004 agents with profiles
 - **ACP Jobs Explorer** -- Browse all ERC-8183 jobs on the Arc ecosystem

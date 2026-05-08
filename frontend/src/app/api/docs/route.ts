@@ -25,10 +25,8 @@ export async function GET() {
         example: {
           response: {
             totalServices: 17,
-            activeServices: 14,
             totalAgents: 1507,
             totalJobs: 1050,
-            completedJobs: 42,
             totalPipelines: 4,
             totalStreams: 1,
             network: "arc-testnet",

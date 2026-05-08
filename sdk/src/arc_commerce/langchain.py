@@ -15,7 +15,7 @@ class PipelineInput(BaseModel):
 
 class ArcPipelineTool(BaseTool):
     name: str = "arc_create_pipeline"
-    description: str = "Create a multi-stage agent workflow pipeline on Arc. Chains multiple ERC-8183 jobs with atomic funding. Returns pipeline ID and stage details."
+    description: str = "Create a conditionally-sequenced pipeline on Arc. Chains multiple ERC-8183 jobs with atomic funding and conditional halt-and-refund. Returns pipeline ID and stage details."
     args_schema: type = PipelineInput
     client: ArcCommerce = None
 

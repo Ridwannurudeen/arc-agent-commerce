@@ -1,4 +1,4 @@
-import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, batchRead, findMaxAgentId } from "@/lib/viemClient";
+import { client, CONTRACTS, jsonResponse, errorResponse, CORS_HEADERS, findMaxAgentId } from "@/lib/viemClient";
 import ServiceMarketABI from "@/abi/ServiceMarket.json";
 import AgenticCommerceABI from "@/abi/AgenticCommerce.json";
 import PipelineOrchestratorABI from "@/abi/PipelineOrchestrator.json";
@@ -41,52 +41,10 @@ export async function GET() {
     const totalJobs = Number(jobCounter as bigint);
     const totalServices = Number(nextServiceId as bigint);
 
-    // Count active services and completed jobs
-    let activeServices = 0;
-    let completedJobs = 0;
-
-    // Fetch services to count active ones
-    if (totalServices > 0) {
-      const serviceCalls = Array.from({ length: totalServices }, (_, i) => ({
-        address: CONTRACTS.SERVICE_MARKET,
-        abi: ServiceMarketABI as any,
-        functionName: "getService" as const,
-        args: [BigInt(i)],
-      }));
-
-      const serviceResults = await batchRead(serviceCalls);
-      for (const r of serviceResults) {
-        if (r.status === "success" && r.result) {
-          const d = r.result as any;
-          if (d.active ?? d[5]) activeServices++;
-        }
-      }
-    }
-
-    // Fetch jobs to count completed ones
-    if (totalJobs > 0) {
-      const jobCalls = Array.from({ length: totalJobs }, (_, i) => ({
-        address: CONTRACTS.AGENTIC_COMMERCE,
-        abi: AgenticCommerceABI as any,
-        functionName: "getJob" as const,
-        args: [BigInt(i + 1)],
-      }));
-
-      const jobResults = await batchRead(jobCalls);
-      for (const r of jobResults) {
-        if (r.status === "success" && r.result) {
-          const j = r.result as any;
-          if (Number(j.status ?? j[7] ?? 0) === 3) completedJobs++;
-        }
-      }
-    }
-
     return jsonResponse({
       totalServices,
-      activeServices,
       totalAgents,
       totalJobs,
-      completedJobs,
       totalPipelines: Number(nextPipelineId as bigint),
       totalStreams: Number(streamCount as bigint),
       network: "arc-testnet",
