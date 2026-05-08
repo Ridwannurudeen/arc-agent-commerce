@@ -65,8 +65,8 @@ pipeline_id = agent.create_pipeline(
 
 | Contract | Address |
 |----------|---------|
-| PipelineOrchestrator | `0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720` |
-| CommerceHook | `0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f` |
+| PipelineOrchestrator | `0x276F9CDD64f82362185Bc6FC715846A19B0f7Dd7` |
+| CommerceHook | `0x792170848bEcFf0B90c5095E58c08F35F5efB72c` |
 
 ## Roadmap
 

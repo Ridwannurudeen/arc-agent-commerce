@@ -310,7 +310,7 @@ def main():
     print(f"{B}{G}╚═══════════════════════════════════════════════════════════╝{RESET}")
     print(f"\n{D}Wallet trail: https://testnet.arcscan.app/address/{wallet}{RESET}")
     print(
-        f"{D}Orchestrator: https://testnet.arcscan.app/address/0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720{RESET}\n"
+        f"{D}Orchestrator: https://testnet.arcscan.app/address/0x276F9CDD64f82362185Bc6FC715846A19B0f7Dd7{RESET}\n"
     )
 
 
