@@ -139,7 +139,7 @@ cd sdk-ts && npm install
 ```
 
 ```typescript
-import { ArcCommerceClient } from "@arc-commerce/sdk";
+import { ArcCommerceClient } from "arc-commerce-sdk";
 
 const client = new ArcCommerceClient({ rpcUrl: "https://rpc.testnet.arc.network" });
 const services = await client.getServices();

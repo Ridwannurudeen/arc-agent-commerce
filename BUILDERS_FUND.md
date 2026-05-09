@@ -73,7 +73,7 @@ pipeline_id = agent.create_pipeline(
 **Now (testnet, complete).** Two pipeline contracts deployed, evaluator-driven approval working, Pipeline #0 completed on-chain with reputation recorded, frontend live, SDKs functional, 177 tests green.
 
 **Next (independent of any third-party action).**
-- Publish `arc-commerce` to PyPI and `@arc-commerce/sdk` to npm with pinned versions and quickstart guides.
+- Publish `arc-commerce-sdk` to PyPI and `arc-commerce-sdk` to npm with pinned versions and quickstart guides.
 - Stand up an indexer (subgraph or lightweight Arc-native indexer) for pipelines, stages, and reputation events so other Arc apps can query without reading contracts directly.
 - Ship at least one reference integration showing a third-party Arc app composing the orchestrator (e.g., a small builder using pipelines for a multi-step task).
 - Mainnet deployment after audit.
@@ -86,7 +86,7 @@ Funding will be used to harden the primitive and lower the cost for other Arc bu
 
 - **Security audit** -- Professional review of `PipelineOrchestrator` and `CommerceHook` before mainnet. The two contracts are the entire pitch; auditing them is bounded scope.
 - **Mainnet deployment** -- Deploy, verify, and monitor on Arc mainnet.
-- **SDK publishing** -- Publish `arc-commerce` (PyPI) and `@arc-commerce/sdk` (npm) with pinned versions and quickstart guides.
+- **SDK publishing** -- Publish `arc-commerce-sdk` (PyPI + npm) with pinned versions and quickstart guides.
 - **Indexed API** -- Subgraph or indexer so other Arc builders can query pipelines, stages, and reputation without reading contracts directly.
 - **Integration partnerships** -- Build at least two reference integrations with other Arc projects to validate the primitive in real workflows.
 - **Documentation** -- Integration guides, architecture docs, and sample apps targeted at Arc builders.

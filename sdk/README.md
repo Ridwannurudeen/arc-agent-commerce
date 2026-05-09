@@ -1,11 +1,11 @@
-# arc-commerce
+# arc-commerce-sdk
 
 Python SDK for [Agent Commerce Protocol](https://github.com/Ridwannurudeen/arc-agent-commerce) — an ERC-8183 conditional sequencer on Arc.
 
 ## Install
 
 ```bash
-pip install arc-commerce
+pip install arc-commerce-sdk
 ```
 
 ## Quick Start — Pipeline (the primitive)

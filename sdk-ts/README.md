@@ -1,11 +1,11 @@
-# @arc-commerce/sdk
+# arc-commerce-sdk
 
 TypeScript SDK for the Agent Commerce Protocol — an ERC-8183 conditional sequencer on Arc. Wraps the PipelineOrchestrator and CommerceHook contracts (the primitive) plus the parallel marketplace contracts (ServiceMarket, StreamEscrow).
 
 ## Install
 
 ```bash
-npm install @arc-commerce/sdk viem
+npm install arc-commerce-sdk viem
 ```
 
 ## Quick Start — Pipeline (the primitive)
@@ -13,7 +13,7 @@ npm install @arc-commerce/sdk viem
 A pipeline is an ordered sequence of ERC-8183 jobs, atomically funded, conditionally halted.
 
 ```typescript
-import { ArcCommerce } from '@arc-commerce/sdk';
+import { ArcCommerce } from 'arc-commerce-sdk';
 
 const agent = new ArcCommerce({ privateKey: process.env.ARC_PK as `0x${string}` });
 
@@ -39,7 +39,7 @@ await agent.approveStage(stages[0].jobId);
 The SDK also wraps the v2 marketplace and streaming-escrow contracts shipped in `src/marketplace/`. Independent of the pipeline primitive.
 
 ```typescript
-import { ArcCommerce } from '@arc-commerce/sdk';
+import { ArcCommerce } from 'arc-commerce-sdk';
 
 const client = new ArcCommerce();
 
@@ -53,7 +53,7 @@ const balance = await client.streamBalance(0);
 ### With wallet (write operations)
 
 ```typescript
-import { ArcCommerce } from '@arc-commerce/sdk';
+import { ArcCommerce } from 'arc-commerce-sdk';
 
 const agent = new ArcCommerce({ privateKey: process.env.ARC_PK as `0x${string}` });
 

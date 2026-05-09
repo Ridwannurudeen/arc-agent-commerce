@@ -1,10 +1,17 @@
 {
-  "name": "@arc-commerce/sdk",
+  "name": "arc-commerce-sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for Agent Commerce Protocol on Arc L1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
+  "keywords": ["arc", "agent", "commerce", "erc-8183", "erc-8004", "usdc", "web3"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ridwannurudeen/arc-agent-commerce.git",
+    "directory": "sdk-ts"
+  },
+  "homepage": "https://github.com/Ridwannurudeen/arc-agent-commerce/tree/master/sdk-ts#readme",
   "scripts": {
     "build": "tsc",
     "test": "vitest run"
