@@ -270,7 +270,9 @@ export function LandingHero({ onLaunch }: Props) {
         <motion.div className="landing-hero-text" initial="hidden" animate="visible" variants={stagger}>
           <motion.div className="landing-eyebrow" variants={fadeUp}>
             <span className="landing-eyebrow-dot" />
-            <strong>Live</strong>·Pipeline #{Math.max(0, pipelines - 1)} settled on-chain
+            <strong>Live</strong>·{pipelines === 0
+              ? "Arc Testnet · 5042002"
+              : `${pipelines} pipeline${pipelines === 1 ? "" : "s"} on-chain`}
           </motion.div>
 
           <motion.h1 className="landing-h1" variants={fadeUp}>

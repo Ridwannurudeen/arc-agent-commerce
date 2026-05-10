@@ -1,0 +1,20 @@
+{
+  "invoice_id": "INV-2026-0042",
+  "vendor": {
+    "name": "Acme Components Ltd",
+    "tax_id": "GB-123456789",
+    "country": "GB"
+  },
+  "line_items": [
+    {"sku": "PCB-A1", "qty": 100, "unit_usdc": 0.40, "amount_usdc": 40.00},
+    {"sku": "CAP-22UF", "qty": 500, "unit_usdc": 0.02, "amount_usdc": 10.00}
+  ],
+  "subtotal_usdc": 50.00,
+  "fee_split_usdc": {
+    "validation": 2.00,
+    "kyb": 3.00,
+    "settlement": 45.00
+  },
+  "total_usdc": 50.00,
+  "due_date": "2026-05-25"
+}

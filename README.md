@@ -60,16 +60,20 @@ Sequence: client funds the whole pipeline in one transaction. Stage 2 only start
 
 | Contract | Address | Purpose |
 |----------|---------|---------|
-| PipelineOrchestrator | [`0xb43E...9720`](https://testnet.arcscan.app/address/0x276F9CDD64f82362185Bc6FC715846A19B0f7Dd7) | Multi-stage workflow orchestration |
-| CommerceHook | [`0xaecF...3D8f`](https://testnet.arcscan.app/address/0x792170848bEcFf0B90c5095E58c08F35F5efB72c) | Evaluator: approve/reject + reputation |
+| PipelineOrchestrator | [`0x276F...7Dd7`](https://testnet.arcscan.app/address/0x276F9CDD64f82362185Bc6FC715846A19B0f7Dd7) | Multi-stage workflow orchestration |
+| CommerceHook | [`0x7921...B72c`](https://testnet.arcscan.app/address/0x792170848bEcFf0B90c5095E58c08F35F5efB72c) | Evaluator: approve/reject + reputation |
 | StreamEscrow | [`0x1501...1Fb6`](https://testnet.arcscan.app/address/0x1501566F49290d5701546D7De837Cb516c121Fb6) | Heartbeat-gated streaming payments |
 | ServiceMarket | [`0x046e...2f88`](https://testnet.arcscan.app/address/0x046e44E2DE09D2892eCeC4200bB3ecD298892f88) | Two-sided capability marketplace |
 | ServiceEscrow | [`0x3658...4Cf`](https://testnet.arcscan.app/address/0x365889e057a3ddABADB542e19f8199650B4df4Cf) | Escrow + dispute resolution |
 | SpendingPolicy | [`0x072b...2634`](https://testnet.arcscan.app/address/0x072bFf95A62Ef1109dBE0122f734D6bC649E2634) | Per-tx/daily caps (marketplace) |
 
-### On-Chain Activity
+PipelineOrchestrator and CommerceHook were freshly redeployed on 2026-05-08 from a clean owner. The pre-2026-05-08 addresses below are orphaned and should not be used; no live code references them.
 
-Pipeline #0 completed end-to-end on testnet: 2-stage (audit -> deploy), 2 USDC, both stages approved, reputation recorded on ERC-8004. [View on ArcScan](https://testnet.arcscan.app/address/0x276F9CDD64f82362185Bc6FC715846A19B0f7Dd7).
+| Orphaned | Address |
+|----------|---------|
+| PipelineOrchestrator (old) | [`0xb43E...9720`](https://testnet.arcscan.app/address/0xb43Ea9dDE8B285d9dB09b19c00C5F1e835779720) |
+| CommerceHook (old) | [`0xaecF...3D8f`](https://testnet.arcscan.app/address/0xaecF3Dd4F1c37d9A774bC435E304Da2757263D8f) |
+| AgentPolicy (removed) | [`0xB172...6c0E`](https://testnet.arcscan.app/address/0xB172b27Af9E084D574817b080C04a7629c606c0E) |
 
 ## Architecture
 
@@ -199,6 +203,10 @@ Reference script that drives a 2-stage `audit -> deploy` pipeline through three 
 cd sdk/examples
 ARC_BUILDER_PK=0x... ARC_AUDITOR_PK=0x... ARC_DEPLOYER_PK=0x... python pipeline_demo.py
 ```
+
+## Reference Integration
+
+A small standalone app showing a third-party use case composing the orchestrator: [`examples/invoice-settlement/`](examples/invoice-settlement/) — a B2B invoice settlement flow (validation → KYB → payout) that demonstrates atomic funding and the conditional refund path. Imports `arc-commerce-sdk` from PyPI; owns no escrow of its own.
 
 ## Tests
 

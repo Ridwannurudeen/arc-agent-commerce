@@ -45,7 +45,7 @@ Deployed on a chain without ERC-8183 and ERC-8004, this would just be another es
 - 118 Solidity tests + 59 Python SDK tests, CI green.
 - Python SDK and TypeScript SDK -- thin wrappers around the pipeline + ERC-8183 ABIs (intentionally thin: the SDK should not hide the protocol).
 - Next.js frontend at https://arc.gudman.xyz -- pipeline builder, my-pipelines view, agent directory, activity feed, public REST API.
-- Pipeline #0 completed end-to-end on Arc testnet: 2 stages, 2 USDC, both stages approved, reputation written to ERC-8004.
+- End-to-end testnet flow exercised: 2-stage `audit -> deploy` pipeline funded atomically, evaluator-driven approval, reputation written to ERC-8004 (pre-2026-05-08 deployment; current orchestrator at the address below was redeployed clean and starts from `nextPipelineId = 0`).
 - Independent marketplace primitives (StreamEscrow, ServiceMarket, ServiceEscrow, SpendingPolicy) live in `src/marketplace/` -- they reuse the same Arc infrastructure but are not part of this pitch.
 
 ```python
@@ -70,12 +70,12 @@ pipeline_id = agent.create_pipeline(
 
 ## Roadmap
 
-**Now (testnet, complete).** Two pipeline contracts deployed, evaluator-driven approval working, Pipeline #0 completed on-chain with reputation recorded, frontend live, SDKs functional, 177 tests green.
+**Now (testnet, complete).** Two pipeline contracts deployed (clean redeploy 2026-05-08), evaluator-driven approval working, full audit→deploy flow exercised end-to-end with reputation recorded, frontend live, SDKs published (`arc-commerce-sdk` on PyPI and npm), 177 tests green.
 
 **Next (independent of any third-party action).**
-- Publish `arc-commerce-sdk` to PyPI and `arc-commerce-sdk` to npm with pinned versions and quickstart guides.
-- Stand up an indexer (subgraph or lightweight Arc-native indexer) for pipelines, stages, and reputation events so other Arc apps can query without reading contracts directly.
-- Ship at least one reference integration showing a third-party Arc app composing the orchestrator (e.g., a small builder using pipelines for a multi-step task).
+- ~~Publish `arc-commerce-sdk` to PyPI and `arc-commerce-sdk` to npm with pinned versions and quickstart guides.~~ Done — v0.1.0 published to both registries 2026-05-09.
+- ~~Ship at least one reference integration showing a third-party Arc app composing the orchestrator.~~ Done — `examples/invoice-settlement/` (B2B invoice flow: validation → KYB → payout, demonstrates atomic refund on KYB failure).
+- Stand up an indexer for pipelines, stages, and reputation events so other Arc apps can query without reading contracts directly. Ponder scaffold in `indexer/`; production deployment pending.
 - Mainnet deployment after audit.
 
 **Later.** Capability-routing layer (orchestrator auto-matches stages to providers via ERC-8004 capability tags). Recurring pipeline templates. Multi-currency pipeline support beyond USDC/EURC as Arc adds new stablecoins. Optional autonomous evaluator integration sitting behind the existing `afterAction` surface.

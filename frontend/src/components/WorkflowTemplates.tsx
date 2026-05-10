@@ -9,7 +9,6 @@ import {
   Scale,
   Cog,
   Clock,
-  Users,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -33,8 +32,6 @@ type WorkflowTemplate = {
   }[];
   totalBudgetRange: [number, number];
   requiredReputation: number;
-  approvalPolicy: "auto" | "manual" | "validator";
-  popularityCount: number;
   estimatedDuration: string;
 };
 
@@ -52,15 +49,6 @@ const CATEGORY_LABELS: Record<WorkflowTemplate["category"], string> = {
   research: "Research",
   compliance: "Compliance",
   operations: "Operations",
-};
-
-const APPROVAL_CONFIG: Record<
-  WorkflowTemplate["approvalPolicy"],
-  { label: string; className: string }
-> = {
-  auto: { label: "Auto", className: "pill-green" },
-  manual: { label: "Manual", className: "pill-blue" },
-  validator: { label: "Validator Required", className: "pill-purple" },
 };
 
 const TEMPLATES: WorkflowTemplate[] = [
@@ -96,8 +84,6 @@ const TEMPLATES: WorkflowTemplate[] = [
     ],
     totalBudgetRange: [40, 90],
     requiredReputation: 2,
-    approvalPolicy: "auto",
-    popularityCount: 47,
     estimatedDuration: "2-4 hours",
   },
   {
@@ -132,8 +118,6 @@ const TEMPLATES: WorkflowTemplate[] = [
     ],
     totalBudgetRange: [30, 65],
     requiredReputation: 1,
-    approvalPolicy: "manual",
-    popularityCount: 23,
     estimatedDuration: "3-6 hours",
   },
   {
@@ -168,8 +152,6 @@ const TEMPLATES: WorkflowTemplate[] = [
     ],
     totalBudgetRange: [65, 125],
     requiredReputation: 3,
-    approvalPolicy: "validator",
-    popularityCount: 31,
     estimatedDuration: "4-8 hours",
   },
   {
@@ -204,8 +186,6 @@ const TEMPLATES: WorkflowTemplate[] = [
     ],
     totalBudgetRange: [25, 45],
     requiredReputation: 2,
-    approvalPolicy: "manual",
-    popularityCount: 18,
     estimatedDuration: "1-2 hours",
   },
   {
@@ -247,8 +227,6 @@ const TEMPLATES: WorkflowTemplate[] = [
     ],
     totalBudgetRange: [65, 125],
     requiredReputation: 5,
-    approvalPolicy: "validator",
-    popularityCount: 12,
     estimatedDuration: "6-12 hours",
   },
   {
@@ -283,8 +261,6 @@ const TEMPLATES: WorkflowTemplate[] = [
     ],
     totalBudgetRange: [20, 45],
     requiredReputation: 1,
-    approvalPolicy: "auto",
-    popularityCount: 15,
     estimatedDuration: "1-3 hours",
   },
 ];
@@ -354,7 +330,6 @@ export function WorkflowTemplates({ onLaunchTemplate }: Props) {
       <div className="template-grid">
         {filtered.map((template, i) => {
           const Icon = template.icon;
-          const approval = APPROVAL_CONFIG[template.approvalPolicy];
           const isExpanded = expandedId === template.id;
 
           return (
@@ -407,17 +382,6 @@ export function WorkflowTemplates({ onLaunchTemplate }: Props) {
                 </span>
                 <span className="template-meta-item">
                   <Clock size={13} />~{template.estimatedDuration}
-                </span>
-              </div>
-
-              {/* Bottom Row */}
-              <div className="template-bottom-row">
-                <span className="template-meta-item">
-                  <Users size={13} />
-                  {template.popularityCount} teams used this
-                </span>
-                <span className={`pill ${approval.className}`}>
-                  {approval.label}
                 </span>
               </div>
 
