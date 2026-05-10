@@ -5,10 +5,15 @@ Three-Wallet Pipeline Demo (scripted, evaluator-driven)
 Demonstrates the full pipeline lifecycle on Arc Testnet using three wallets
 to play client and two providers. Approval is driven manually by the client
 (evaluator path), not by autonomous agents.
+
+Each stage runs the full ERC-8183 lifecycle:
+    Open -> setBudget (provider) -> fund (client) -> submit (provider)
+         -> approve (client) -> Completed
+
 1. BUILDER creates a 2-stage pipeline (audit → deploy)
-2. AUDITOR submits work for stage 1
+2. AUDITOR setBudget + (BUILDER funds) + AUDITOR submit
 3. BUILDER approves stage 1 → stage 2 auto-starts
-4. DEPLOYER submits work for stage 2
+4. DEPLOYER setBudget + (BUILDER funds) + DEPLOYER submit
 5. BUILDER approves stage 2 → pipeline completes
 
 Usage:
@@ -189,21 +194,20 @@ def main():
     print_stage_table(all_stages, pipeline_id, builder)
 
     # ═══════════════════════════════════════════════════════════════
-    # Step 2: AUDITOR submits work on stage 1
+    # Step 2: AUDITOR drives stage 1 through the ACP lifecycle
     # ═══════════════════════════════════════════════════════════════
-    log.info(f"\n{BOLD}─ Step 2: AUDITOR submits audit report ─{RESET}")
+    log.info(f"\n{BOLD}─ Step 2: AUDITOR runs stage 1 (setBudget → fund → submit) ─{RESET}")
 
     stage1 = all_stages[0]
-    log.info(f"{MAGENTA}AUDITOR{RESET} executing audit for Job #{stage1.job_id}...")
+    log.info(f"{MAGENTA}AUDITOR{RESET} setBudget on Job #{stage1.job_id} ({format_usdc(stage1.budget)})...")
+    auditor.set_budget(stage1.job_id, stage1.budget)
 
-    # Simulate audit work
-    time.sleep(2)
-    audit_deliverable = "audit_report_v1_hash_" + Web3.keccak(text="audit-report").hex()[:16]
-    log.info(f"{GREEN}✓ Audit complete!{RESET} Deliverable: {audit_deliverable[:32]}...")
-    log.info(
-        f"{DIM}(In production: AUDITOR's agent would call acp.submit() "
-        f"via ERC-8183 interface){RESET}"
-    )
+    log.info(f"{CYAN}BUILDER{RESET} fundStage(pipeline #{pipeline_id})...")
+    builder.fund_stage(pipeline_id)
+
+    audit_hash = Web3.keccak(text=f"audit_report:pipeline_{pipeline_id}:stage_1")
+    log.info(f"{MAGENTA}AUDITOR{RESET} submit on Job #{stage1.job_id} (deliverable {audit_hash.hex()[:18]}...)")
+    auditor.submit_job(stage1.job_id, audit_hash)
 
     # ═══════════════════════════════════════════════════════════════
     # Step 3: BUILDER approves stage 1
@@ -226,21 +230,20 @@ def main():
     print_stage_table(all_stages, pipeline_id, builder)
 
     # ═══════════════════════════════════════════════════════════════
-    # Step 4: DEPLOYER submits work on stage 2
+    # Step 4: DEPLOYER drives stage 2 through the ACP lifecycle
     # ═══════════════════════════════════════════════════════════════
-    log.info(f"\n{BOLD}─ Step 4: DEPLOYER submits deployment proof ─{RESET}")
+    log.info(f"\n{BOLD}─ Step 4: DEPLOYER runs stage 2 (setBudget → fund → submit) ─{RESET}")
 
     stage2 = all_stages[1]
-    log.info(f"{MAGENTA}DEPLOYER{RESET} executing contract deployment for Job #{stage2.job_id}...")
+    log.info(f"{MAGENTA}DEPLOYER{RESET} setBudget on Job #{stage2.job_id} ({format_usdc(stage2.budget)})...")
+    deployer.set_budget(stage2.job_id, stage2.budget)
 
-    # Simulate deployment work
-    time.sleep(2)
-    deploy_deliverable = "deployment_tx_hash_" + Web3.keccak(text="deploy-proof").hex()[:16]
-    log.info(f"{GREEN}✓ Deployment complete!{RESET} Tx: {deploy_deliverable[:32]}...")
-    log.info(
-        f"{DIM}(In production: DEPLOYER's agent would call acp.submit() "
-        f"via ERC-8183 interface){RESET}"
-    )
+    log.info(f"{CYAN}BUILDER{RESET} fundStage(pipeline #{pipeline_id})...")
+    builder.fund_stage(pipeline_id)
+
+    deploy_hash = Web3.keccak(text=f"deployment_tx:pipeline_{pipeline_id}:stage_2")
+    log.info(f"{MAGENTA}DEPLOYER{RESET} submit on Job #{stage2.job_id} (deliverable {deploy_hash.hex()[:18]}...)")
+    deployer.submit_job(stage2.job_id, deploy_hash)
 
     # ═══════════════════════════════════════════════════════════════
     # Step 5: BUILDER approves stage 2
