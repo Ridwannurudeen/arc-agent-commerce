@@ -21,6 +21,28 @@ from arc_commerce.constants import (
     get_network_config,
 )
 
+from arc_commerce.types import (
+    Service, Agreement, AgreementStatus,
+    Pipeline, Stage, PipelineStatus, StageStatus,
+)
+from arc_commerce.abi import (
+    SERVICE_MARKET_ABI,
+    SERVICE_ESCROW_ABI,
+    SPENDING_POLICY_ABI,
+    IDENTITY_REGISTRY_ABI,
+    PIPELINE_ORCHESTRATOR_ABI,
+    COMMERCE_HOOK_ABI,
+    ERC20_ABI,
+)
+from arc_commerce.errors import (
+    TransactionRevertedError,
+    TransactionTimeoutError,
+    InsufficientBalanceError,
+    PolicyViolationError,
+)
+
+logger = logging.getLogger("arc_commerce")
+
 # Minimal ACP ABI — only the two functions providers need to drive a job
 # from Open → Submitted. The orchestrator handles createJob/fund/complete;
 # the hook handles approve/reject. These two are the provider-side hooks.
@@ -48,27 +70,6 @@ _ACP_PROVIDER_ABI = [
         "type": "function",
     },
 ]
-from arc_commerce.types import (
-    Service, Agreement, AgreementStatus,
-    Pipeline, Stage, PipelineStatus, StageStatus,
-)
-from arc_commerce.abi import (
-    SERVICE_MARKET_ABI,
-    SERVICE_ESCROW_ABI,
-    SPENDING_POLICY_ABI,
-    IDENTITY_REGISTRY_ABI,
-    PIPELINE_ORCHESTRATOR_ABI,
-    COMMERCE_HOOK_ABI,
-    ERC20_ABI,
-)
-from arc_commerce.errors import (
-    TransactionRevertedError,
-    TransactionTimeoutError,
-    InsufficientBalanceError,
-    PolicyViolationError,
-)
-
-logger = logging.getLogger("arc_commerce")
 
 
 class ArcCommerce:
