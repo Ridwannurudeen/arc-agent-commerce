@@ -5,7 +5,12 @@ import { graphql } from "ponder";
 
 const app = new Hono();
 
-app.use("/", graphql({ db, schema }));
-app.use("/graphql", graphql({ db, schema }));
+const opts = {
+  maxOperationDepth: 8,
+  maxOperationTokens: 500,
+  maxOperationAliases: 5,
+};
+
+app.use("/graphql", graphql({ db, schema }, opts));
 
 export default app;

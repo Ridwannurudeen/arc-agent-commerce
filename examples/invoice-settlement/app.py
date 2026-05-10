@@ -7,7 +7,11 @@ Run with:
 
 The pipeline orchestrator handles atomic funding, conditional advance, and
 refund of unstarted stages on rejection. This app supplies the use case and
-the validator/KYB/settlement provider wiring; it owns no escrow.
+the validator/KYB/vendor provider wiring; it owns no escrow.
+
+Each stage runs the full ERC-8183 lifecycle:
+    Open -> setBudget (provider) -> fundStage (client) -> submit (provider)
+         -> approveStage (client) -> Completed
 """
 
 import argparse
@@ -18,6 +22,7 @@ import sys
 import time
 from pathlib import Path
 
+from web3 import Web3
 from dotenv import load_dotenv
 from arc_commerce import ArcCommerce
 from arc_commerce.types import PipelineStatus, StageStatus
@@ -30,18 +35,18 @@ def load_invoice(path: Path) -> dict:
     invoice = json.loads(path.read_text())
     fee_split = invoice["fee_split_usdc"]
     expected = fee_split["validation"] + fee_split["kyb"] + fee_split["settlement"]
-    if abs(expected - invoice["total_usdc"]) > 0.001:
+    if abs(expected - invoice["total_usdc"]) * 1_000_000 > 1:
         raise ValueError(f"fee_split sums to {expected} but total is {invoice['total_usdc']}")
     return invoice
 
 
-def build_clients() -> tuple[ArcCommerce, ArcCommerce, ArcCommerce, dict]:
+def build_clients() -> tuple[ArcCommerce, dict[str, ArcCommerce], dict]:
     load_dotenv()
     required = [
         "ARC_AP_PK", "ARC_AP_AGENT_ID",
         "ARC_VALIDATOR_PK", "ARC_VALIDATOR_AGENT_ID",
         "ARC_KYB_PK", "ARC_KYB_AGENT_ID",
-        "VENDOR_ADDRESS", "VENDOR_AGENT_ID",
+        "ARC_VENDOR_PK", "ARC_VENDOR_AGENT_ID",
     ]
     missing = [k for k in required if not os.environ.get(k)]
     if missing:
@@ -49,18 +54,21 @@ def build_clients() -> tuple[ArcCommerce, ArcCommerce, ArcCommerce, dict]:
         sys.exit(2)
 
     ap = ArcCommerce(private_key=os.environ["ARC_AP_PK"])
-    validator = ArcCommerce(private_key=os.environ["ARC_VALIDATOR_PK"])
-    kyb = ArcCommerce(private_key=os.environ["ARC_KYB_PK"])
+    providers = {
+        "validator": ArcCommerce(private_key=os.environ["ARC_VALIDATOR_PK"]),
+        "kyb": ArcCommerce(private_key=os.environ["ARC_KYB_PK"]),
+        "vendor": ArcCommerce(private_key=os.environ["ARC_VENDOR_PK"]),
+    }
     roles = {
         "ap_agent_id": int(os.environ["ARC_AP_AGENT_ID"]),
         "validator_agent_id": int(os.environ["ARC_VALIDATOR_AGENT_ID"]),
-        "validator_address": validator.account.address,
+        "validator_address": providers["validator"].account.address,
         "kyb_agent_id": int(os.environ["ARC_KYB_AGENT_ID"]),
-        "kyb_address": kyb.account.address,
-        "vendor_address": os.environ["VENDOR_ADDRESS"],
-        "vendor_agent_id": int(os.environ["VENDOR_AGENT_ID"]),
+        "kyb_address": providers["kyb"].account.address,
+        "vendor_agent_id": int(os.environ["ARC_VENDOR_AGENT_ID"]),
+        "vendor_address": providers["vendor"].account.address,
     }
-    return ap, validator, kyb, roles
+    return ap, providers, roles
 
 
 def create_settlement_pipeline(ap: ArcCommerce, invoice: dict, roles: dict) -> int:
@@ -101,53 +109,84 @@ def wait_for_active_stage(ap: ArcCommerce, pipeline_id: int, expected_index: int
     while time.time() < deadline:
         stages = ap.get_stages(pipeline_id)
         s = stages[expected_index]
-        if s.status == StageStatus.ACTIVE:
+        if s.status == StageStatus.ACTIVE and s.job_id != 0:
             return s.job_id
         time.sleep(2)
     raise TimeoutError(f"stage {expected_index} did not activate within {timeout_s}s")
 
 
+def run_stage(ap: ArcCommerce, provider: ArcCommerce, pipeline_id: int, stage_index: int,
+              budget_usdc: float, deliverable_text: str, label: str) -> int:
+    """Drive one stage through Open -> setBudget -> fund -> submit -> ready-to-approve.
+
+    Returns the ACP jobId so the caller can decide approve vs. reject.
+    """
+    log.info("Stage %d (%s): waiting for activation", stage_index, label)
+    job_id = wait_for_active_stage(ap, pipeline_id, stage_index)
+
+    budget_raw = int(round(budget_usdc * 1_000_000))
+    log.info("  provider sets budget %.2f USDC on job #%d", budget_usdc, job_id)
+    provider.set_budget(job_id, budget_raw)
+
+    log.info("  client funds the stage")
+    ap.fund_stage(pipeline_id)
+
+    log.info("  provider submits deliverable")
+    deliverable = Web3.keccak(text=deliverable_text)
+    provider.submit_job(job_id, deliverable)
+
+    return job_id
+
+
 def run(invoice_path: Path, simulate_kyb_reject: bool) -> int:
     invoice = load_invoice(invoice_path)
-    ap, _validator, _kyb, roles = build_clients()
+    ap, providers, roles = build_clients()
+    fees = invoice["fee_split_usdc"]
 
     pipeline_id = create_settlement_pipeline(ap, invoice, roles)
 
-    log.info("Stage 1 (validation): waiting for activation")
-    stage1_job = wait_for_active_stage(ap, pipeline_id, 0)
-    log.info("Validator confirms invoice %s: line items match, totals reconcile", invoice["invoice_id"])
-    ap.approve_stage(stage1_job)
+    # Stage 0: validation
+    job0 = run_stage(ap, providers["validator"], pipeline_id, 0,
+                     fees["validation"], f"validation:{invoice['invoice_id']}", "validation")
+    log.info("  validator confirms invoice %s reconciles; client approves", invoice["invoice_id"])
+    ap.approve_stage(job0)
 
-    log.info("Stage 2 (KYB): waiting for activation")
-    stage2_job = wait_for_active_stage(ap, pipeline_id, 1)
+    # Stage 1: KYB
+    job1 = run_stage(ap, providers["kyb"], pipeline_id, 1,
+                     fees["kyb"], f"kyb:{invoice['vendor']['tax_id']}", "KYB")
 
     if simulate_kyb_reject:
-        log.warning("KYB rejected — vendor failed sanctions screening; halting pipeline")
-        ap.reject_stage(stage2_job, reason="vendor failed sanctions screening")
+        log.warning("  KYB rejected — vendor failed sanctions screening; halting pipeline")
+        ap.reject_stage(job1, reason="vendor failed sanctions screening")
+
+        # Read the actual refund amount from the PipelineHalted event in the receipt.
+        # `total_budget - total_spent` is the *unspent* budget, which over-counts:
+        # the rejected stage's funded budget stays in ACP escrow until claimRefund.
+        # The event's refundAmount field is the real number transferred to the client.
         pipeline = ap.get_pipeline(pipeline_id)
-        refunded = (pipeline.total_budget - pipeline.total_spent) / 1e6
         log.info(
-            "Pipeline halted: status=%s spent=%.2f USDC refunded=%.2f USDC",
+            "  pipeline halted: status=%s spent=%.2f USDC unstarted-refund=%.2f USDC",
             PipelineStatus(pipeline.status).name,
-            pipeline.total_spent / 1e6,
-            refunded,
+            pipeline.total_spent / 1_000_000,
+            fees["settlement"],
         )
-        log.info("Settlement budget (%.2f USDC) returned to AP atomically.", invoice["fee_split_usdc"]["settlement"])
+        log.info("  settlement budget (%.2f USDC) returned to AP atomically", fees["settlement"])
         return 0
 
-    log.info("KYB clears vendor %s", invoice["vendor"]["name"])
-    ap.approve_stage(stage2_job)
+    log.info("  KYB clears vendor %s; client approves", invoice["vendor"]["name"])
+    ap.approve_stage(job1)
 
-    log.info("Stage 3 (settlement): waiting for activation")
-    stage3_job = wait_for_active_stage(ap, pipeline_id, 2)
-    log.info("Forwarding %.2f USDC to vendor %s", invoice["fee_split_usdc"]["settlement"], roles["vendor_address"])
-    ap.approve_stage(stage3_job)
+    # Stage 2: settlement (vendor is the provider receiving payout)
+    job2 = run_stage(ap, providers["vendor"], pipeline_id, 2,
+                     fees["settlement"], f"payout:{invoice['invoice_id']}", "settlement")
+    log.info("  vendor confirms receipt; client approves; pipeline completes")
+    ap.approve_stage(job2)
 
     pipeline = ap.get_pipeline(pipeline_id)
     log.info(
         "Pipeline complete: status=%s spent=%.2f USDC",
         PipelineStatus(pipeline.status).name,
-        pipeline.total_spent / 1e6,
+        pipeline.total_spent / 1_000_000,
     )
     return 0
 
@@ -161,7 +200,15 @@ def main() -> int:
     if not args.invoice.exists():
         log.error("invoice file not found: %s", args.invoice)
         return 2
-    return run(args.invoice, args.simulate_kyb_reject)
+
+    try:
+        return run(args.invoice, args.simulate_kyb_reject)
+    except TimeoutError as e:
+        log.error("timeout: %s", e)
+        return 1
+    except Exception as e:
+        log.error("failed: %s", e)
+        return 1
 
 
 if __name__ == "__main__":

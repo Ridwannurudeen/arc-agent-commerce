@@ -98,7 +98,8 @@ Requires=postgresql.service
 Type=simple
 WorkingDirectory=/opt/arc-commerce-repo/indexer
 EnvironmentFile=/opt/arc-commerce-repo/indexer/.env.local
-ExecStart=/usr/bin/npm run start
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npx ponder start --port 42069
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -118,16 +119,21 @@ Look for `API endpoints: Live at http://localhost:42069` in the journal.
 
 ### Step 4 — nginx route
 
-Add to `/etc/nginx/sites-available/arc.gudman.xyz` inside the existing `server { ... listen 443 ... }` block:
+Add to `/etc/nginx/sites-available/arc.gudman.xyz` inside the existing `server { ... listen 443 ... }` block. Forward only the GraphQL endpoint (POST) and a health probe — Ponder also serves `/metrics`, `/status`, `/ready` on the same port and we don't want those public.
 
 ```nginx
-location /indexer/ {
-    proxy_pass http://127.0.0.1:42069/;
+location = /indexer/graphql {
+    if ($request_method !~ ^(POST|OPTIONS)$ ) { return 405; }
+    proxy_pass http://127.0.0.1:42069/graphql;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_http_version 1.1;
     proxy_buffering off;
+}
+
+location = /indexer/health {
+    proxy_pass http://127.0.0.1:42069/health;
 }
 ```
 

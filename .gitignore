@@ -10,6 +10,9 @@ docs/plans/
 
 # Environment and secrets
 .env
+.env.*
+!.env.example
+!.env.local.example
 scripts/demo_wallets.json
 
 # Python

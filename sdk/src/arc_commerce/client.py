@@ -17,8 +17,37 @@ from arc_commerce.constants import (
     PIPELINE_ORCHESTRATOR_ADDRESS,
     COMMERCE_HOOK_ADDRESS,
     STREAM_ESCROW_ADDRESS,
+    AGENTIC_COMMERCE_ADDRESS,
     get_network_config,
 )
+
+# Minimal ACP ABI — only the two functions providers need to drive a job
+# from Open → Submitted. The orchestrator handles createJob/fund/complete;
+# the hook handles approve/reject. These two are the provider-side hooks.
+_ACP_PROVIDER_ABI = [
+    {
+        "inputs": [
+            {"name": "jobId", "type": "uint256"},
+            {"name": "amount", "type": "uint256"},
+            {"name": "data", "type": "bytes"},
+        ],
+        "name": "setBudget",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+    {
+        "inputs": [
+            {"name": "jobId", "type": "uint256"},
+            {"name": "deliverableHash", "type": "bytes32"},
+            {"name": "data", "type": "bytes"},
+        ],
+        "name": "submit",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+]
 from arc_commerce.types import (
     Service, Agreement, AgreementStatus,
     Pipeline, Stage, PipelineStatus, StageStatus,
@@ -125,6 +154,13 @@ class ArcCommerce:
                 address=Web3.to_checksum_address(hook_addr),
                 abi=COMMERCE_HOOK_ABI,
             )
+
+        # ACP / AgenticCommerce — needed for provider-side setBudget + submit
+        acp_addr = config.get("agentic_commerce", AGENTIC_COMMERCE_ADDRESS)
+        self.acp = self.w3.eth.contract(
+            address=Web3.to_checksum_address(acp_addr),
+            abi=_ACP_PROVIDER_ABI,
+        )
 
         # StreamEscrow (optional)
         stream_addr = stream_escrow_address or config.get("stream_escrow", STREAM_ESCROW_ADDRESS)
@@ -592,6 +628,24 @@ class ArcCommerce:
         """Enable or disable auto-approval for pipeline stages."""
         self._require_hook()
         return self._send_tx(self.hook.functions.setAutoApprove(pipeline_id, enabled))
+
+    def set_budget(self, job_id: int, amount_raw: int) -> dict:
+        """Provider quotes the budget for an ACP job (Open -> Quoted).
+
+        Caller must be the provider on the job. Amount is in raw token units
+        (e.g. 50 USDC = 50 * 1_000_000).
+        """
+        return self._send_tx(self.acp.functions.setBudget(job_id, amount_raw, b""))
+
+    def submit_job(self, job_id: int, deliverable_hash: bytes) -> dict:
+        """Provider submits a deliverable on a funded ACP job (Funded -> Submitted).
+
+        Caller must be the provider on the job. ``deliverable_hash`` must be 32 bytes;
+        a 32-byte ``keccak256`` digest is the convention.
+        """
+        if len(deliverable_hash) != 32:
+            raise ValueError(f"deliverable_hash must be 32 bytes, got {len(deliverable_hash)}")
+        return self._send_tx(self.acp.functions.submit(job_id, deliverable_hash, b""))
 
     def get_pipeline(self, pipeline_id: int) -> Pipeline:
         """Get pipeline details by ID."""
