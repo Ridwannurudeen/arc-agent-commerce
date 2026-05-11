@@ -2997,18 +2997,6 @@ header h1 span {
   color: var(--text-dim);
 }
 
-.template-reputation {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  padding: 0.35rem 0.6rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
-  border: 1px solid var(--border);
-}
-
 .template-expand-btn {
   display: flex;
   align-items: center;

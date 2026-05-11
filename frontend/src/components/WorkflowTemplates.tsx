@@ -9,7 +9,6 @@ import {
   Scale,
   Cog,
   Clock,
-  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Rocket,
@@ -31,7 +30,6 @@ type WorkflowTemplate = {
     description: string;
   }[];
   totalBudgetRange: [number, number];
-  requiredReputation: number;
   estimatedDuration: string;
 };
 
@@ -83,7 +81,6 @@ const TEMPLATES: WorkflowTemplate[] = [
       },
     ],
     totalBudgetRange: [40, 90],
-    requiredReputation: 2,
     estimatedDuration: "2-4 hours",
   },
   {
@@ -117,7 +114,6 @@ const TEMPLATES: WorkflowTemplate[] = [
       },
     ],
     totalBudgetRange: [30, 65],
-    requiredReputation: 1,
     estimatedDuration: "3-6 hours",
   },
   {
@@ -151,7 +147,6 @@ const TEMPLATES: WorkflowTemplate[] = [
       },
     ],
     totalBudgetRange: [65, 125],
-    requiredReputation: 3,
     estimatedDuration: "4-8 hours",
   },
   {
@@ -185,7 +180,6 @@ const TEMPLATES: WorkflowTemplate[] = [
       },
     ],
     totalBudgetRange: [25, 45],
-    requiredReputation: 2,
     estimatedDuration: "1-2 hours",
   },
   {
@@ -226,7 +220,6 @@ const TEMPLATES: WorkflowTemplate[] = [
       },
     ],
     totalBudgetRange: [65, 125],
-    requiredReputation: 5,
     estimatedDuration: "6-12 hours",
   },
   {
@@ -260,7 +253,6 @@ const TEMPLATES: WorkflowTemplate[] = [
       },
     ],
     totalBudgetRange: [20, 45],
-    requiredReputation: 1,
     estimatedDuration: "1-3 hours",
   },
 ];
@@ -383,12 +375,6 @@ export function WorkflowTemplates({ onLaunchTemplate }: Props) {
                 <span className="template-meta-item">
                   <Clock size={13} />~{template.estimatedDuration}
                 </span>
-              </div>
-
-              <div className="template-reputation">
-                <CheckCircle2 size={12} />
-                Requires {template.requiredReputation}+ completed job
-                {template.requiredReputation !== 1 ? "s" : ""}
               </div>
 
               {/* Expand/Collapse Button */}

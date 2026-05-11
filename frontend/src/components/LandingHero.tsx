@@ -306,7 +306,7 @@ export function LandingHero({ onLaunch }: Props) {
           <motion.div className="landing-meta-strip" variants={fadeUp}>
             <span><strong><AnimatedNumber value={pipelines} /></strong>Pipelines</span>
             <span><strong><AnimatedNumber value={jobs} /></strong>ERC&#8209;8183 jobs</span>
-            <span><strong>177</strong>Tests · CI green</span>
+            <span><strong>175</strong>Tests · CI green</span>
           </motion.div>
         </motion.div>
 
@@ -438,8 +438,8 @@ export function LandingHero({ onLaunch }: Props) {
           </motion.div>
           <motion.div className="landing-figure" variants={fadeUp}>
             <div className="landing-figure-label">Tests</div>
-            <div className="landing-figure-value">177</div>
-            <div className="landing-figure-source">118 Solidity · 59 Python</div>
+            <div className="landing-figure-value">175</div>
+            <div className="landing-figure-source">118 Solidity · 57 Python</div>
           </motion.div>
           <motion.div className="landing-figure" variants={fadeUp}>
             <div className="landing-figure-label">Network</div>

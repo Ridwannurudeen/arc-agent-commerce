@@ -359,7 +359,9 @@ export function Marketplace({ onViewAgent, onHire }: Props) {
                         Agent #{s.agentId}
                       </button>
                       {isVerified && (
-                        <CheckCircle2 size={14} className="verified" />
+                        <span title="3+ completed ACP jobs" style={{ display: "inline-flex" }}>
+                          <CheckCircle2 size={14} className="verified" />
+                        </span>
                       )}
                       {stats && stats.total > 0 && (
                         <span style={{
