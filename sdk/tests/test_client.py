@@ -176,6 +176,79 @@ class TestNewMethods:
         )
 
 
+class TestRegisterAgent:
+    def _mock_send_tx_success(self, client):
+        client.account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed")
+        client.w3.eth.send_raw_transaction.return_value = b"\x00" * 32
+        client.w3.eth.wait_for_transaction_receipt.return_value = {"status": 1, "blockNumber": 1}
+
+    def test_returns_token_id_from_transfer_event(self, client):
+        """register_agent should return tokenId from the ERC-721 Transfer mint event."""
+        self._mock_send_tx_success(client)
+        client.account.address = "0xAbCdEf0000000000000000000000000000000000"
+        client.identity.events.Transfer.return_value.process_receipt.return_value = [
+            {"args": {
+                "from": "0x0000000000000000000000000000000000000000",
+                "to": "0xabcdef0000000000000000000000000000000000",
+                "tokenId": 3646,
+            }},
+        ]
+
+        agent_id = client.register_agent("ipfs://meta")
+
+        assert agent_id == 3646
+        client.identity.functions.register.assert_called_once_with("ipfs://meta")
+
+    def test_default_metadata_uri_is_empty(self, client):
+        """register_agent() with no args should pass empty string."""
+        self._mock_send_tx_success(client)
+        client.account.address = "0x1111111111111111111111111111111111111111"
+        client.identity.events.Transfer.return_value.process_receipt.return_value = [
+            {"args": {
+                "from": "0x0000000000000000000000000000000000000000",
+                "to": "0x1111111111111111111111111111111111111111",
+                "tokenId": 1,
+            }},
+        ]
+
+        client.register_agent()
+
+        client.identity.functions.register.assert_called_once_with("")
+
+    def test_ignores_non_mint_transfers(self, client):
+        """register_agent should skip transfers where from != zero or to != caller."""
+        self._mock_send_tx_success(client)
+        client.account.address = "0xAAaa000000000000000000000000000000000000"
+        client.identity.events.Transfer.return_value.process_receipt.return_value = [
+            # unrelated transfer in same tx
+            {"args": {
+                "from": "0xBBbb000000000000000000000000000000000000",
+                "to": "0xCCcc000000000000000000000000000000000000",
+                "tokenId": 999,
+            }},
+            # the actual mint
+            {"args": {
+                "from": "0x0000000000000000000000000000000000000000",
+                "to": "0xaaaa000000000000000000000000000000000000",
+                "tokenId": 42,
+            }},
+        ]
+
+        agent_id = client.register_agent()
+
+        assert agent_id == 42
+
+    def test_returns_minus_one_when_no_mint_event(self, client):
+        """register_agent should return -1 if no matching Transfer event is found."""
+        self._mock_send_tx_success(client)
+        client.account.address = "0xAAaa000000000000000000000000000000000000"
+        client.identity.events.Transfer.return_value.process_receipt.return_value = []
+
+        agent_id = client.register_agent()
+
+        assert agent_id == -1
+
+
 class TestSendTxErrorHandling:
     def test_send_tx_requires_account(self, client):
         """_send_tx should raise ValueError without a private key."""

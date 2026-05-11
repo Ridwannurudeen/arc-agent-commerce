@@ -113,6 +113,7 @@ export type ContractAddresses = {
   pipelineOrchestrator: Address;
   commerceHook: Address;
   streamEscrow: Address;
+  identityRegistry: Address;
   usdc: Address;
   eurc: Address;
 };

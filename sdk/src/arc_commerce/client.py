@@ -378,6 +378,22 @@ class ArcCommerce:
             self._reset_nonce()
             raise
 
+    def register_agent(self, metadata_uri: str = "") -> int:
+        """Register a new ERC-8004 agent. Returns the new agent ID (tokenId).
+
+        Caller (signer) becomes the agent owner. ``metadata_uri`` is optional
+        and stored on-chain via ``tokenURI``.
+        """
+        receipt = self._send_tx(self.identity.functions.register(metadata_uri))
+        owner = self.account.address.lower()
+        for log in self.identity.events.Transfer().process_receipt(receipt):
+            if (
+                log["args"]["from"] == "0x0000000000000000000000000000000000000000"
+                and log["args"]["to"].lower() == owner
+            ):
+                return int(log["args"]["tokenId"])
+        return -1
+
     def list_service(
         self,
         agent_id: int,

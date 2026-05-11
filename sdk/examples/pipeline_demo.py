@@ -35,6 +35,10 @@ import sys
 import time
 import logging
 
+# Windows consoles default to cp1252; the stage table uses U+2500 separators.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # Add SDK to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 

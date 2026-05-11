@@ -129,6 +129,7 @@ const client = new ArcCommerce({
 
 | Method | Returns | Description |
 |---|---|---|
+| `registerAgent(metadataUri?)` | `number` | Register a new ERC-8004 agent, returns agent ID |
 | `listService(...)` | `number` | List a service, returns service ID |
 | `createPipeline(...)` | `number` | Create multi-stage pipeline, returns pipeline ID |
 | `fundStage(pipelineId)` | `Hex` | Fund active stage's ACP job |
@@ -150,6 +151,7 @@ const client = new ArcCommerce({
 | PipelineOrchestrator | `0x276F9CDD64f82362185Bc6FC715846A19B0f7Dd7` |
 | CommerceHook | `0x792170848bEcFf0B90c5095E58c08F35F5efB72c` |
 | StreamEscrow | `0x1501566F49290d5701546D7De837Cb516c121Fb6` |
+| IdentityRegistry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 | USDC | `0x3600000000000000000000000000000000000000` |
 
 ## License

@@ -59,6 +59,7 @@ for s in services:
 - `total_services()` / `total_agreements()` / `total_fees()`
 
 ### Write Methods (require private key)
+- `register_agent(metadata_uri="")` — register a new ERC-8004 agent; returns the new agent ID
 - `list_service(agent_id, capability, price_usdc, metadata_uri)` — list a service
 - `create_agreement(provider, provider_agent_id, ...)` — create escrowed agreement
 - `confirm_completion(agreement_id)` — release escrow

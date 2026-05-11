@@ -1,6 +1,6 @@
 {
   "name": "arc-commerce-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK for Agent Commerce Protocol on Arc L1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

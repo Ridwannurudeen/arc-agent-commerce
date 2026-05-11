@@ -26,5 +26,15 @@
     "inputs": [{ "name": "metadataURI", "type": "string", "internalType": "string" }],
     "outputs": [{ "name": "tokenId", "type": "uint256", "internalType": "uint256" }],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Transfer",
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "from", "type": "address", "internalType": "address" },
+      { "indexed": true, "name": "to", "type": "address", "internalType": "address" },
+      { "indexed": true, "name": "tokenId", "type": "uint256", "internalType": "uint256" }
+    ]
   }
 ]

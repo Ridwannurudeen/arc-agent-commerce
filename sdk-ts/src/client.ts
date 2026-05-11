@@ -16,6 +16,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 
 import { arcTestnet, CONTRACTS, DEFAULT_RPC, ERC20_ABI } from './constants.js';
+import IdentityRegistryABI from './abi/IdentityRegistry.json';
 import type {
   Service,
   Pipeline,
@@ -46,6 +47,7 @@ export class ArcCommerce {
     orchestrator: Address;
     hook: Address;
     streamEscrow: Address;
+    identityRegistry: Address;
     usdc: Address;
     eurc: Address;
   };
@@ -63,6 +65,7 @@ export class ArcCommerce {
       orchestrator: config.contracts?.pipelineOrchestrator ?? CONTRACTS.PIPELINE_ORCHESTRATOR,
       hook: config.contracts?.commerceHook ?? CONTRACTS.COMMERCE_HOOK,
       streamEscrow: config.contracts?.streamEscrow ?? CONTRACTS.STREAM_ESCROW,
+      identityRegistry: config.contracts?.identityRegistry ?? CONTRACTS.IDENTITY_REGISTRY,
       usdc: config.contracts?.usdc ?? CONTRACTS.USDC,
       eurc: config.contracts?.eurc ?? CONTRACTS.EURC,
     };
@@ -119,6 +122,37 @@ export class ArcCommerce {
       });
       await this.publicClient.waitForTransactionReceipt({ hash });
     }
+  }
+
+  // ── IdentityRegistry writes ──
+
+  async registerAgent(metadataUri = ''): Promise<number> {
+    this.requireWallet();
+    const hash = await this.walletClient!.writeContract({
+      address: this.addresses.identityRegistry,
+      abi: IdentityRegistryABI,
+      functionName: 'register',
+      args: [metadataUri],
+      chain: arcTestnet,
+      account: this.account!,
+    });
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+    // ERC-721 Transfer(from, to, tokenId): topic[1]=from, topic[2]=to, topic[3]=tokenId
+    const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+    const ZERO_TOPIC = '0x' + '0'.repeat(64);
+    const ownerTopic = '0x' + this.account!.address.slice(2).toLowerCase().padStart(64, '0');
+    for (const log of receipt.logs) {
+      if (
+        log.address.toLowerCase() === this.addresses.identityRegistry.toLowerCase() &&
+        log.topics[0] === TRANSFER_TOPIC &&
+        log.topics[1] === ZERO_TOPIC &&
+        log.topics[2]?.toLowerCase() === ownerTopic &&
+        log.topics[3]
+      ) {
+        return Number(BigInt(log.topics[3]));
+      }
+    }
+    return -1;
   }
 
   // ── ServiceMarket reads ──
